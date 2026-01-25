@@ -9,6 +9,14 @@ const TABS = ["Team", "Schedule", "Submissions"];
 const TEAM_LIMIT = 5;
 
 export default function RebelHackPage() {
+  // !! IMPORTANT !!
+  // Anything before this date will redirect to /redirect
+  // If you want to test the dashboard comment the code below
+  const now = new Date();
+  if (now < new Date("2026-02-02T12:00:00-08:00")) {
+    redirect('/redirect');
+  }
+
   const [activeTab, setActiveTab] = useState("Team");
   const [teamName, setTeamName] = useState("");
   const [isTeamCreated, setIsTeamCreated] = useState(false);
@@ -48,7 +56,6 @@ export default function RebelHackPage() {
 
   const filteredMembers = availableMembers.filter(member => member.toLowerCase().includes(search.toLowerCase()));
 
-  redirect('/redirect');
 
   return (
     <div className={`${style.pageContainer} min-h-screen flex flex-col relative`}>
