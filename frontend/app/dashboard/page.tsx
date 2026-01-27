@@ -3,7 +3,7 @@ import style from "./dashboard.module.css";
 import { useState } from "react";
 import { redirect } from "next/navigation";
 
-
+const debug = true;
 const INITIAL_MEMBERS = ["Sally", "Alice", "Bob", "Kate", "Fred", "Alex", "Noah", "Billy"];
 const TABS = ["Team", "Schedule", "Submissions"];
 const TEAM_LIMIT = 5;
@@ -13,7 +13,7 @@ export default function RebelHackPage() {
   // Anything before this date will redirect to /redirect
   // If you want to test the dashboard comment the code below
   const now = new Date();
-  if (now < new Date("2026-02-02T12:00:00-08:00")) {
+  if (now < new Date("2026-02-02T12:00:00-08:00") && !debug) {
     redirect('/redirect');
   }
 
