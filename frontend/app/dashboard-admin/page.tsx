@@ -7,11 +7,11 @@ import { useState } from "react";
 import Teams from "../components/dashboard-admin/Teams";
 import Arrivals from "../components/dashboard-admin/Arrivals";
 
+
 export default function AdminPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("Arrivals");
 
-  // purely for Drawer highlight (optional)
-  const [activeTab, setActiveTab] = useState("Admin");
 
   return (
     <div
