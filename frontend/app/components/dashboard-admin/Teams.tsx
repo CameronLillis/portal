@@ -13,17 +13,31 @@ type Member = {
 
 type TeamStatus = "Ready" | "Checked In" | "Incomplete";
 
+type Judge = {
+  id: string;
+  name: string;
+  email: string;
+};
+
 type Team = {
   id: string;
   team: string;
   track: Track;
   status: TeamStatus;
   members: Member[];
+  judgeId: string | null;
 };
 
 export default function EditTeams() {
   const [search, setSearch] = useState("");
   const [trackFilter, setTrackFilter] = useState<"All" | Track>("All");
+
+ 
+  const [judges] = useState<Judge[]>([
+    { id: "j1", name: "Jamie Park", email: "jamie.park@unlv.edu" },
+    { id: "j2", name: "Riley Gomez", email: "riley.gomez@unlv.edu" },
+    { id: "j3", name: "Morgan Brooks", email: "morgan.brooks@csn.edu" },
+  ]);
 
   const [teams, setTeams] = useState<Team[]>([
     {
@@ -36,6 +50,7 @@ export default function EditTeams() {
         { id: "m2", name: "Liam Chen", email: "liam.chen@unlv.edu" },
         { id: "m3", name: "Priya Shah", email: "priya.shah@unlv.edu" },
       ],
+      judgeId: "j1",
     },
     {
       id: "t2",
@@ -46,6 +61,7 @@ export default function EditTeams() {
         { id: "m4", name: "Mateo Rivera", email: "mateo.rivera@unlv.edu" },
         { id: "m5", name: "Maria Gonzalez", email: "maria.gonzalez@csn.edu" },
       ],
+      judgeId: null,
     },
     {
       id: "t3",
@@ -55,32 +71,40 @@ export default function EditTeams() {
       members: [
         { id: "m6", name: "Sofia Patel", email: "sofia.patel@unlv.edu" },
       ],
+      judgeId: "j2",
     },
   ]);
 
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
   const activeTeam = teams.find((t) => t.id === activeTeamId) ?? null;
 
+  const judgeById = useMemo(() => {
+    return new Map(judges.map((j) => [j.id, j] as const));
+  }, [judges]);
+
   const filteredTeams = useMemo(() => {
     const q = search.trim().toLowerCase();
 
     return teams
-      .filter((t) => {
-        if (trackFilter === "All") return true;
-        return t.track === trackFilter;
-      })
+      .filter((t) => (trackFilter === "All" ? true : t.track === trackFilter))
       .filter((t) => {
         if (!q) return true;
+
+        const judge = t.judgeId ? judgeById.get(t.judgeId) : null;
+
         return (
           t.team.toLowerCase().includes(q) ||
           t.members.some(
             (m) =>
               m.name.toLowerCase().includes(q) ||
               m.email.toLowerCase().includes(q),
-          )
+          ) ||
+          (judge &&
+            (judge.name.toLowerCase().includes(q) ||
+              judge.email.toLowerCase().includes(q)))
         );
       });
-  }, [teams, search, trackFilter]);
+  }, [teams, search, trackFilter, judgeById]);
 
   function removeMember(teamId: string, memberId: string) {
     setTeams((prev) =>
@@ -95,6 +119,12 @@ export default function EditTeams() {
   function removeTeam(teamId: string) {
     setTeams((prev) => prev.filter((t) => t.id !== teamId));
     setActiveTeamId((cur) => (cur === teamId ? null : cur));
+  }
+
+  function setTeamJudge(teamId: string, judgeId: string | null) {
+    setTeams((prev) =>
+      prev.map((t) => (t.id === teamId ? { ...t, judgeId } : t)),
+    );
   }
 
   function statusChip(status: TeamStatus) {
@@ -114,6 +144,29 @@ export default function EditTeams() {
     );
   }
 
+  function judgeChip(judgeId: string | null) {
+    if (!judgeId) {
+      return (
+        <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-medium opacity-80">
+          Unassigned
+        </span>
+      );
+    }
+    const j = judgeById.get(judgeId);
+    if (!j) {
+      return (
+        <span className="inline-flex items-center rounded-full border border-red-400/30 bg-red-500/10 px-2.5 py-0.5 text-xs font-medium text-red-300">
+          Unknown Judge
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center rounded-full border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-0.5 text-xs font-medium text-cyan-200">
+        {j.name}
+      </span>
+    );
+  }
+
   return (
     <>
       <h2 className={styles.primaryTitle}>Teams</h2>
@@ -126,13 +179,13 @@ export default function EditTeams() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm"
-              placeholder="Search teams, member name, member email..."
+              placeholder="Search teams, members, or judges..."
             />
 
             <select
               value={trackFilter}
               onChange={(e) => setTrackFilter(e.target.value as "All" | Track)}
-              className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm [color-scheme:dark]"
+              className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm scheme-dark"
             >
               <option value="All">All Tracks</option>
               <option value="Software">Software</option>
@@ -142,7 +195,7 @@ export default function EditTeams() {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto max-h-[420px] overflow-y-auto">
+        <div className="overflow-x-auto max-h-105 overflow-y-auto">
           <table className="w-full text-sm">
             <thead className="opacity-70">
               <tr className="border-b">
@@ -150,6 +203,10 @@ export default function EditTeams() {
                 <th className="py-3 text-left font-medium">Members</th>
                 <th className="py-3 text-left font-medium">Track</th>
                 <th className="py-3 text-left font-medium">Status</th>
+
+              
+                <th className="py-3 text-left font-medium">Judge</th>
+
                 <th className="py-3 text-right font-medium">Actions</th>
               </tr>
             </thead>
@@ -161,6 +218,10 @@ export default function EditTeams() {
                   <td className="py-3">{row.members.length}</td>
                   <td className="py-3">{row.track}</td>
                   <td className="py-3">{statusChip(row.status)}</td>
+
+                 
+                  <td className="py-3">{judgeChip(row.judgeId)}</td>
+
                   <td className="py-3 text-right">
                     <div className="flex justify-end gap-2">
                       <button
@@ -183,7 +244,7 @@ export default function EditTeams() {
 
               {filteredTeams.length === 0 && (
                 <tr>
-                  <td className="py-6 text-center opacity-70" colSpan={5}>
+                  <td className="py-6 text-center opacity-70" colSpan={6}>
                     No matching teams.
                   </td>
                 </tr>
@@ -210,7 +271,10 @@ export default function EditTeams() {
                 <div className="text-xs opacity-70">
                   {activeTeam.track} • {activeTeam.members.length} members
                 </div>
-                <div className="mt-2">{statusChip(activeTeam.status)}</div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  {statusChip(activeTeam.status)}
+                  {judgeChip(activeTeam.judgeId)}
+                </div>
               </div>
 
               <button
@@ -219,6 +283,39 @@ export default function EditTeams() {
               >
                 Close
               </button>
+            </div>
+
+          
+            <div className="mt-5">
+              <div className="text-sm font-medium opacity-80">
+                Assigned Judge
+              </div>
+
+              <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
+                <select
+                  value={activeTeam.judgeId ?? ""}
+                  onChange={(e) =>
+                    setTeamJudge(activeTeam.id, e.target.value || null)
+                  }
+                  className="w-full rounded-xl bg-[#111435] border border-white/10 px-3 py-2 text-sm scheme-dark"
+                >
+                  <option value="">Unassigned</option>
+                  {judges.map((j) => (
+                    <option key={j.id} value={j.id}>
+                      {j.name} ({j.email})
+                    </option>
+                  ))}
+                </select>
+
+                {activeTeam.judgeId && (
+                  <button
+                    onClick={() => setTeamJudge(activeTeam.id, null)}
+                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs hover:bg-white/10"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="mt-5">
