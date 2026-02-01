@@ -23,11 +23,12 @@ class ApiController extends AbstractController
     public function register(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher) {
         $data = json_decode($request->getContent(), true);
 
-        if (!isset($data['email']))
+        if (!isset($data['email']) || empty($data['email']))
             return $this->json(['error' => 'Email is required']);
 
-        if (!isset($data['password']))
+        if (!isset($data['password']) || empty($data['password']))
             return $this->json(['error' => 'Password is required']);
+          
 
         $user = (new User());
         $user->setEmail($data['email'])

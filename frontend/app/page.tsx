@@ -22,7 +22,7 @@ export default function LoginPage() {
         password: password
       };
 
-      const response = await api.post<LoginResponse>('/api/login', loginData);
+      const response = await api.post<LoginResponse>('/login', loginData);
 
       // Store the JWT token
       if (response.token) {
