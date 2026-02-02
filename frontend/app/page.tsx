@@ -22,7 +22,7 @@ export default function LoginPage() {
         password: password
       };
 
-      const response = await api.post<LoginResponse>('/api/login', loginData);
+      const response = await api.post<LoginResponse>('/login', loginData);
 
       // Store the JWT token
       if (response.token) {
@@ -65,17 +65,20 @@ export default function LoginPage() {
       
       // After successful registration, automatically log in
       await handleLogin();
-    } catch (err: any) {
-      console.error('Registration error:', err);
-      
-      if (err.response?.data?.message) {
-        setError(err.response.data.message);
-      } else if (err.message) {
-        setError(err.message);
-      } else {
-        setError('An error occurred during registration. Please try again.');
-      }
-    }
+} catch (err: any) {
+  console.error('Registration error:', err);
+  
+  // Check for 'error' (Symfony) or 'message' (Generic)
+  const apiError = err.response?.data?.error || err.response?.data?.message;
+
+  if (apiError) {
+    setError(apiError);
+  } else if (err.message) {
+    setError(err.message);
+  } else {
+    setError('An error occurred during registration. Please try again.');
+  }
+}
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,7 +147,7 @@ export default function LoginPage() {
               placeholder="Password"
             />
           </label>
-          
+{/*           
           {mode === "register" && (
             <div>
             <div className="flex flex-col gap-3">
@@ -199,7 +202,7 @@ export default function LoginPage() {
               )}
             </div>
           </div>          
-        )}
+        )} */}
 
           <button
             type="submit"
