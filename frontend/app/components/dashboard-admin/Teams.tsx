@@ -1,17 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import useApi from "@/hooks/useApi";
 import styles from "../../dashboard-admin/admin.module.css";
 
 type Track = "Software" | "Hardware";
 
-type Member = {
+type Person = {
   id: string;
   name: string;
   email: string;
 };
 
-type TeamStatus = "Ready" | "Checked In" | "Incomplete";
+type TeamVerification = "Verified" | "Unverified";
 
 type Judge = {
   id: string;
@@ -23,57 +24,22 @@ type Team = {
   id: string;
   team: string;
   track: Track;
-  status: TeamStatus;
-  members: Member[];
+  verification: TeamVerification;
+  persons: Person[];
   judgeId: string | null;
 };
 
 export default function EditTeams() {
   const [search, setSearch] = useState("");
   const [trackFilter, setTrackFilter] = useState<"All" | Track>("All");
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberEmail, setNewMemberEmail] = useState("");
 
- 
-  const [judges] = useState<Judge[]>([
-    { id: "j1", name: "Jamie Park", email: "jamie.park@unlv.edu" },
-    { id: "j2", name: "Riley Gomez", email: "riley.gomez@unlv.edu" },
-    { id: "j3", name: "Morgan Brooks", email: "morgan.brooks@csn.edu" },
-  ]);
+  const [judges, setJudges] = useState<Judge[]>([]);
+  const judgesAPI = useApi<Judge[]>("/judges");
 
-  const [teams, setTeams] = useState<Team[]>([
-    {
-      id: "t1",
-      team: "Neon Ninjas",
-      track: "Software",
-      status: "Ready",
-      members: [
-        { id: "m1", name: "Ava Nguyen", email: "ava.nguyen@unlv.edu" },
-        { id: "m2", name: "Liam Chen", email: "liam.chen@unlv.edu" },
-        { id: "m3", name: "Priya Shah", email: "priya.shah@unlv.edu" },
-      ],
-      judgeId: "j1",
-    },
-    {
-      id: "t2",
-      team: "Circuit Cowboys",
-      track: "Hardware",
-      status: "Checked In",
-      members: [
-        { id: "m4", name: "Mateo Rivera", email: "mateo.rivera@unlv.edu" },
-        { id: "m5", name: "Maria Gonzalez", email: "maria.gonzalez@csn.edu" },
-      ],
-      judgeId: null,
-    },
-    {
-      id: "t3",
-      team: "Desert Debuggers",
-      track: "Software",
-      status: "Incomplete",
-      members: [
-        { id: "m6", name: "Sofia Patel", email: "sofia.patel@unlv.edu" },
-      ],
-      judgeId: "j2",
-    },
-  ]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const teamsAPI = useApi<Team[]>("/teams");
 
   const [activeTeamId, setActiveTeamId] = useState<string | null>(null);
   const activeTeam = teams.find((t) => t.id === activeTeamId) ?? null;
@@ -94,7 +60,7 @@ export default function EditTeams() {
 
         return (
           t.team.toLowerCase().includes(q) ||
-          t.members.some(
+          t.persons.some(
             (m) =>
               m.name.toLowerCase().includes(q) ||
               m.email.toLowerCase().includes(q),
@@ -106,11 +72,32 @@ export default function EditTeams() {
       });
   }, [teams, search, trackFilter, judgeById]);
 
+  function addMember(teamId: string) {
+    const name = newMemberName.trim();
+    const email = newMemberEmail.trim();
+
+    if (!name || !email) return;
+
+    setTeams((prev) =>
+      prev.map((t) =>
+        t.id === teamId
+          ? {
+              ...t,
+              persons: [...t.persons, { id: crypto.randomUUID(), name, email }],
+            }
+          : t,
+      ),
+    );
+
+    setNewMemberName("");
+    setNewMemberEmail("");
+  }
+
   function removeMember(teamId: string, memberId: string) {
     setTeams((prev) =>
       prev.map((t) =>
         t.id === teamId
-          ? { ...t, members: t.members.filter((m) => m.id !== memberId) }
+          ? { ...t, persons: t.persons.filter((m) => m.id !== memberId) }
           : t,
       ),
     );
@@ -127,19 +114,17 @@ export default function EditTeams() {
     );
   }
 
-  function statusChip(status: TeamStatus) {
+  function statusChip(verification: TeamVerification) {
     const cls =
-      status === "Ready"
+      verification === "Verified"
         ? "border-green-400/30 bg-green-500/10 text-green-300"
-        : status === "Checked In"
-          ? "border-yellow-400/30 bg-yellow-500/10 text-yellow-300"
-          : "border-red-400/30 bg-red-500/10 text-red-300";
+        : "border-red-400/30 bg-red-500/10 text-red-300";
 
     return (
       <span
         className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${cls}`}
       >
-        {status}
+        {verification}
       </span>
     );
   }
@@ -179,7 +164,7 @@ export default function EditTeams() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm"
-              placeholder="Search teams, members, or judges..."
+              placeholder="Search teams, persons, or judges..."
             />
 
             <select
@@ -204,7 +189,6 @@ export default function EditTeams() {
                 <th className="py-3 text-left font-medium">Track</th>
                 <th className="py-3 text-left font-medium">Status</th>
 
-              
                 <th className="py-3 text-left font-medium">Judge</th>
 
                 <th className="py-3 text-right font-medium">Actions</th>
@@ -215,11 +199,10 @@ export default function EditTeams() {
               {filteredTeams.map((row) => (
                 <tr key={row.id} className="border-b last:border-b-0">
                   <td className="py-3">{row.team}</td>
-                  <td className="py-3">{row.members.length}</td>
+                  <td className="py-3">{row.persons.length}</td>
                   <td className="py-3">{row.track}</td>
-                  <td className="py-3">{statusChip(row.status)}</td>
+                  <td className="py-3">{statusChip(row.verification)}</td>
 
-                 
                   <td className="py-3">{judgeChip(row.judgeId)}</td>
 
                   <td className="py-3 text-right">
@@ -228,7 +211,7 @@ export default function EditTeams() {
                         onClick={() => setActiveTeamId(row.id)}
                         className="rounded-lg border border-[#FEA70A] bg-[#111435] px-3 py-1.5 text-xs hover:opacity-80"
                       >
-                        View
+                        Edit
                       </button>
 
                       <button
@@ -261,18 +244,18 @@ export default function EditTeams() {
           onClick={() => setActiveTeamId(null)}
         >
           <div
-            className={styles.card}
+            className={styles.cardModal}
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: 720, width: "100%" }}
+            style={{ maxWidth: "90vw", width: "100%", height: "75%" }}
           >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-row items-start justify-between gap-3">
               <div>
                 <div className="text-lg font-semibold">{activeTeam.team}</div>
                 <div className="text-xs opacity-70">
-                  {activeTeam.track} • {activeTeam.members.length} members
+                  {activeTeam.track} • {activeTeam.persons.length} persons
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  {statusChip(activeTeam.status)}
+                  {statusChip(activeTeam.verification)}
                   {judgeChip(activeTeam.judgeId)}
                 </div>
               </div>
@@ -285,7 +268,6 @@ export default function EditTeams() {
               </button>
             </div>
 
-          
             <div className="mt-5">
               <div className="text-sm font-medium opacity-80">
                 Assigned Judge
@@ -322,7 +304,7 @@ export default function EditTeams() {
               <div className="text-sm font-medium opacity-80">Members</div>
 
               <div className="mt-2 divide-y divide-white/10 rounded-xl border border-white/10">
-                {activeTeam.members.map((m) => (
+                {activeTeam.persons.map((m) => (
                   <div
                     key={m.id}
                     className="flex items-center justify-between gap-3 p-3"
@@ -341,10 +323,30 @@ export default function EditTeams() {
                   </div>
                 ))}
 
-                {activeTeam.members.length === 0 && (
-                  <div className="p-4 text-sm opacity-70">No members left.</div>
+                {activeTeam.persons.length === 0 && (
+                  <div className="p-4 text-sm opacity-70">No persons left.</div>
                 )}
               </div>
+            </div>
+            <div className="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
+              <input
+                value={newMemberName}
+                onChange={(e) => setNewMemberName(e.target.value)}
+                placeholder="Member name"
+                className="w-full rounded-xl bg-[#111435] border border-white/10 px-3 py-2 text-sm"
+              />
+              <input
+                value={newMemberEmail}
+                onChange={(e) => setNewMemberEmail(e.target.value)}
+                placeholder="Member email"
+                className="w-full rounded-xl bg-[#111435] border border-white/10 px-3 py-2 text-sm"
+              />
+              <button
+                onClick={() => addMember(activeTeam.id)}
+                className="rounded-lg border border-[#FEA70A] bg-[#111435] px-3 py-2 text-xs hover:opacity-80"
+              >
+                Add
+              </button>
             </div>
           </div>
         </div>

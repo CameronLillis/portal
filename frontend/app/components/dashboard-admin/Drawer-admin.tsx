@@ -24,7 +24,7 @@ export function Drawer({
 
           <aside className={style.drawerPanel}>
             <div className={style.drawerHeader}>
-              <div className="text-xl font-bold tracking-widest text-[var(--primary)]">
+              <div className="text-xl font-bold tracking-widest text-(--primary)">
                 MENU
               </div>
               <button

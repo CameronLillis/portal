@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import styles from "../../dashboard-admin/admin.module.css";
 import useApi from "@/hooks/useApi";
 
-type ArrivalState = "Not Arrived" | "Arrived" | "Checked In";
+type ArrivalState = "Pending" | "Checked In";
 
 type Person = {
   id: string;
@@ -20,7 +20,7 @@ type Person = {
 // (Create) GET    - Gets information (Make a get request to an endpoint )
 // (Read)   POST   - Modify the state of underlying data, (create a new resource)
 // (Update) PUT    - Update the existing data (Used for arrival state)
-// (Delete) DELETE - Removes information 
+// (Delete) DELETE - Removes information
 
 export default function Arrivals() {
   //  Mock person
@@ -31,7 +31,7 @@ export default function Arrivals() {
       email: "ava.nguyen@unlv.edu",
       team: "Neon Ninjas",
       track: "Software",
-      state: "Not Arrived",
+      state: "Pending",
     },
     {
       id: "p2",
@@ -39,71 +39,7 @@ export default function Arrivals() {
       email: "mateo.rivera@unlv.edu",
       team: "Circuit Cowboys",
       track: "Hardware",
-      state: "Not Arrived",
-    },
-    {
-      id: "p3",
-      name: "Sofia Patel",
-      email: "sofia.patel@unlv.edu",
-      team: "Desert Debuggers",
-      track: "Software",
-      state: "Not Arrived",
-    },
-    {
-      id: "p4",
-      name: "Jordan Lee",
-      email: "jordan.lee@csn.edu",
-      team: "Robo Rebels",
-      track: "Hardware",
-      state: "Not Arrived",
-    },
-    {
-      id: "p5",
-      name: "Liam Chen",
-      email: "liam.chen@unlv.edu",
-      team: "Pixel Pioneers",
-      track: "Software",
-      state: "Not Arrived",
-    },
-    {
-      id: "p6",
-      name: "Maria Gonzalez",
-      email: "maria.gonzalez@csn.edu",
-      team: "Signal Squad",
-      track: "Hardware",
-      state: "Not Arrived",
-    },
-    {
-      id: "p7",
-      name: "Noah Brooks",
-      email: "noah.brooks@unlv.edu",
-      team: "Byte Benders",
-      track: "Software",
-      state: "Not Arrived",
-    },
-    {
-      id: "p8",
-      name: "Aaliyah Johnson",
-      email: "aaliyah.johnson@unlv.edu",
-      team: "Desert Coders",
-      track: "Software",
-      state: "Not Arrived",
-    },
-    {
-      id: "p9",
-      name: "Ethan Park",
-      email: "ethan.park@csn.edu",
-      team: "Hardware Heroes",
-      track: "Hardware",
-      state: "Not Arrived",
-    },
-    {
-      id: "p10",
-      name: "Priya Shah",
-      email: "priya.shah@unlv.edu",
-      team: "Quantum Quokkas",
-      track: "Software",
-      state: "Not Arrived",
+      state: "Pending",
     },
   ]);
 
@@ -114,10 +50,9 @@ export default function Arrivals() {
 
   const arrivalsStats = useMemo(() => {
     const totalPeople = people.length;
-    const arrived = people.filter((p) => p.state === "Arrived").length;
     const checkedIn = people.filter((p) => p.state === "Checked In").length;
-    const notArrived = people.filter((p) => p.state === "Not Arrived").length;
-    return { totalPeople, arrived, checkedIn, notArrived };
+    const pending = people.filter((p) => p.state === "Pending").length;
+    return { totalPeople, checkedIn, pending };
   }, [people]);
 
   const filteredPeople = useMemo(() => {
@@ -149,28 +84,9 @@ export default function Arrivals() {
     <>
       {/* Arrivals List */}
       <h2 className={styles.primaryTitle}>Arrivals</h2>
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className={styles.card}>
-          <div className="text-sm opacity-70">Not Arrived</div>
-          <div className="mt-1 text-2xl font-semibold">
-            {arrivalsStats.notArrived}
-          </div>
-        </div>
-        <div className={styles.card}>
-          <div className="text-sm opacity-70">Arrived</div>
-          <div className="mt-1 text-2xl font-semibold">
-            {arrivalsStats.arrived}
-          </div>
-        </div>
-        <div className={styles.card}>
-          <div className="text-sm opacity-70">Checked In</div>
-          <div className="mt-1 text-2xl font-semibold">
-            {arrivalsStats.checkedIn}
-          </div>
-        </div>
-      </div>
+
       <div className={styles.card}>
-        <div className="flex flex-col gap-2 md:flex-row md:items-center">
+        <div className="flex flex-row gap-2 md:flex-row md:items-center">
           <input
             value={arrivalSearch}
             onChange={(e) => setArrivalSearch(e.target.value)}
@@ -187,10 +103,21 @@ export default function Arrivals() {
             className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm"
           >
             <option value="All">All</option>
-            <option value="Not Arrived">Not Arrived</option>
-            <option value="Arrived">Arrived</option>
+            <option value="Pending">Pending</option>
             <option value="Checked In">Checked In</option>
           </select>
+
+          <div className="flex flex-row ml-auto">
+            <div className="flex flex-row gap-2">
+              <div className="rounded-xl bg-[#111435] border border-[#868585] px-3 py-2 text-sm font-bold">
+                Pending: {arrivalsStats.pending}
+              </div>
+              <div className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm font-bold">
+                Checked In: {arrivalsStats.checkedIn}
+              </div>
+            </div>
+            
+          </div>
         </div>
 
         {/* People list/table */}
@@ -211,9 +138,7 @@ export default function Arrivals() {
                 const pill =
                   p.state === "Checked In"
                     ? "border-green-400/30 bg-green-500/10 text-green-300"
-                    : p.state === "Arrived"
-                      ? "border-yellow-400/30 bg-yellow-500/10 text-yellow-300"
-                      : "border-white/10 bg-white/5 text-white/70";
+                    : "border-white/10 bg-white/5 text-white/70";
 
                 return (
                   <tr key={p.id} className="border-b last:border-b-0">
@@ -244,8 +169,7 @@ export default function Arrivals() {
                           }
                           className="rounded-lg bg-[#111435] border border-[#FEA70A]  px-2 py-1 text-xs"
                         >
-                          <option value="Not Arrived">Not Arrived</option>
-                          <option value="Arrived">Arrived</option>
+                          <option value="Pending">Pending</option>
                           <option value="Checked In">Checked In</option>
                         </select>
 
