@@ -8,19 +8,23 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
+
 
 #[Route('/api', name: 'api_')]
 class ApiController extends AbstractController
 {
     #[Route('/login', name: 'login', methods: ['POST'])]
-    public function login() {
+    public function login()
+    {
         // This is intercepted by json_login in security.yaml
         // Controller code is never executed
         throw new \LogicException('Error logging in dude');
     }
 
     #[Route('/register', name: 'register', methods: ['POST'])]
-    public function register(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher) {
+    public function register(Request $request, EntityManagerInterface $em, UserPasswordHasherInterface $passwordHasher)
+    {
         $data = json_decode($request->getContent(), true);
 
         // Validate email
@@ -50,8 +54,8 @@ class ApiController extends AbstractController
             return $this->json(['message' => 'Password cannot contain whitespace characters'], 400);
         }
 
-        
-      
+
+
         $user = (new User());
         $user->setEmail($data['email'])
             ->setPassword($passwordHasher->hashPassword($user, $data['password']))
@@ -68,4 +72,26 @@ class ApiController extends AbstractController
             ]
         ], 201);
     }
+
+    #[Route('/users', name: 'users', methods: ['GET'])]
+    public function retrieveUsers(EntityManagerInterface $em)
+    {
+        $users = $em->getRepository(User::class)->findAll();
+
+        $json_data = array_map(fn(User $u) => [
+            'id' => $u->getId(),
+            'name' => $u->getName() ?? '',
+            'email' => $u->getEmail(),
+            'team' => $u->getTeam() ?? '',
+            'track' => $u->getTrack() ?? '',
+            'state' => $u->getState() ?? 'Pending',
+
+        ], $users);
+
+        return $this->json($json_data);
+    }
+
+
+
+
 }

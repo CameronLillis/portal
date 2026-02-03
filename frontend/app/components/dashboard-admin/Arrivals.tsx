@@ -6,8 +6,8 @@ import useApi from "@/hooks/useApi";
 
 type ArrivalState = "Pending" | "Checked In";
 
-type Person = {
-  id: string;
+type User = {
+  id: number;
   name: string;
   email: string;
   team: string;
@@ -23,25 +23,10 @@ type Person = {
 // (Delete) DELETE - Removes information
 
 export default function Arrivals() {
-  //  Mock person
-  const [people, setPeople] = useState<Person[]>([
-    {
-      id: "p1",
-      name: "Ava Nguyen",
-      email: "ava.nguyen@unlv.edu",
-      team: "Neon Ninjas",
-      track: "Software",
-      state: "Pending",
-    },
-    {
-      id: "p2",
-      name: "Mateo Rivera",
-      email: "mateo.rivera@unlv.edu",
-      team: "Circuit Cowboys",
-      track: "Hardware",
-      state: "Pending",
-    },
-  ]);
+  const { data: users } = useApi<User[]>('/users')
+// users[] is an array of json objects
+
+ 
 
   const [arrivalSearch, setArrivalSearch] = useState("");
   const [arrivalFilter, setArrivalFilter] = useState<"All" | ArrivalState>(
@@ -49,16 +34,15 @@ export default function Arrivals() {
   );
 
   const arrivalsStats = useMemo(() => {
-    const totalPeople = people.length;
-    const checkedIn = people.filter((p) => p.state === "Checked In").length;
-    const pending = people.filter((p) => p.state === "Pending").length;
-    return { totalPeople, checkedIn, pending };
-  }, [people]);
+    const checkedIn = users.filter((u) => u.state === "Checked In").length;
+    const pending = users.filter((p) => u.state === "Pending").length;
+    return {checkedIn, pending };
+  }, [users]);
 
-  const filteredPeople = useMemo(() => {
+  const filtereduser = useMemo(() => {
     const q = arrivalSearch.trim().toLowerCase();
 
-    return people
+    return users
       .filter((p) => {
         if (!q) return true;
         return (
@@ -72,11 +56,11 @@ export default function Arrivals() {
 
         return p.state === arrivalFilter;
       });
-  }, [people, arrivalSearch, arrivalFilter]);
+  }, [users, arrivalSearch, arrivalFilter]);
 
-  function updatePersonState(personId: string, newState: ArrivalState) {
-    setPeople((prev) =>
-      prev.map((p) => (p.id === personId ? { ...p, state: newState } : p)),
+  function updatePersonState(userId: number, newState: ArrivalState) {
+    setUser((prev) =>
+      prev.map((u) => (u.id === userId ? { ...u, state: newState } : u)),
     );
   }
 
@@ -94,7 +78,7 @@ export default function Arrivals() {
             placeholder="Search name, email, team"
           />
 
-          {/* Filter People */}
+          {/* Filter users */}
           <select
             value={arrivalFilter}
             onChange={(e) =>
@@ -120,12 +104,12 @@ export default function Arrivals() {
           </div>
         </div>
 
-        {/* People list/table */}
+        {/* users list/table */}
         <div className="overflow-x-auto h-100">
           <table className="w-full text-sm">
             <thead className="opacity-70">
               <tr className="border-b">
-                <th className="py-3 text-left font-medium">Person</th>
+                <th className="py-3 text-left font-medium">User</th>
                 <th className="py-3 text-left font-medium">Team</th>
                 <th className="py-3 text-left font-medium">Track</th>
                 <th className="py-3 text-left font-medium">State</th>
@@ -134,7 +118,7 @@ export default function Arrivals() {
             </thead>
 
             <tbody>
-              {filteredPeople.map((p) => {
+              {filtereduser.map((p) => {
                 const pill =
                   p.state === "Checked In"
                     ? "border-green-400/30 bg-green-500/10 text-green-300"
@@ -182,10 +166,10 @@ export default function Arrivals() {
                 );
               })}
 
-              {filteredPeople.length === 0 && (
+              {filtereduser.length === 0 && (
                 <tr>
                   <td className="py-6 text-center opacity-70" colSpan={5}>
-                    No matching people.
+                    No matching users.
                   </td>
                 </tr>
               )}
