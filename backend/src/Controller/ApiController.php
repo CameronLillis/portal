@@ -8,7 +8,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
 
 
 #[Route('/api', name: 'api_')]
@@ -55,11 +55,9 @@ class ApiController extends AbstractController
         }
 
 
-
         $user = (new User());
         $user->setEmail($data['email'])
-            ->setPassword($passwordHasher->hashPassword($user, $data['password']))
-        ;
+            ->setPassword($passwordHasher->hashPassword($user, $data['password']));
 
         $em->persist($user);
         $em->flush();
@@ -73,6 +71,7 @@ class ApiController extends AbstractController
         ], 201);
     }
 
+    // Get user json object
     #[Route('/users', name: 'users', methods: ['GET'])]
     public function retrieveUsers(EntityManagerInterface $em)
     {
@@ -91,36 +90,27 @@ class ApiController extends AbstractController
         return $this->json($json_data);
     }
 
-    // #[Route('/users/{state}', methods: ['POST'])]
-    // public function addUser(
-    //     Request $request,
-    //     SerializerInterface $serializer,
-    //     EntityManagerInterface $em
-    // ) {
-    //     $content = $request->getContent();
 
-    //     $user = $serializer->deserialize($content, User::class, 'json');
 
-    //     $em->persist($user);
-    //     $em->flush();
-
-    //     return $this->json($user, 201);
-    // }
-
-    #[Route('/users/{id}', methods: ['PUT', 'PATCH'])]
+    #[Route('/users/{id}', methods: ['PATCH'])]
     public function checkIn(
         Request $request,
-        User $user,
-        SerializerInterface $serializer,
-        EntityManagerInterface $em
-    ) {
+        EntityManagerInterface $em,
+        int $id
+    ): JsonResponse {
         $data = json_decode($request->getContent(), true);
-        $user->setState($data['state'] ?? $user->getState());
+        $user = $em->getRepository(User::class)->find($id);
 
+        // Checks 
+        if (!$user) {
+            return $this->json(['message' => 'User not found'], 404);
+        }
+
+        $user->setState($data['state']);
         $em->flush();
 
         return $this->json($user);
     }
-
-
 }
+
+

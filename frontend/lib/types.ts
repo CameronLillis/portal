@@ -31,3 +31,14 @@ export interface ErrorResponse {
   message: string;
   error?: string;
 }
+
+export type ArrivalState = "Pending" | "Checked In";
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  team: string;
+  track: "Software" | "Hardware";
+  state: ArrivalState;
+}
