@@ -91,7 +91,36 @@ class ApiController extends AbstractController
         return $this->json($json_data);
     }
 
+    // #[Route('/users/{state}', methods: ['POST'])]
+    // public function addUser(
+    //     Request $request,
+    //     SerializerInterface $serializer,
+    //     EntityManagerInterface $em
+    // ) {
+    //     $content = $request->getContent();
 
+    //     $user = $serializer->deserialize($content, User::class, 'json');
+
+    //     $em->persist($user);
+    //     $em->flush();
+
+    //     return $this->json($user, 201);
+    // }
+
+    #[Route('/users/{id}', methods: ['PUT', 'PATCH'])]
+    public function checkIn(
+        Request $request,
+        User $user,
+        SerializerInterface $serializer,
+        EntityManagerInterface $em
+    ) {
+        $data = json_decode($request->getContent(), true);
+        $user->setState($data['state'] ?? $user->getState());
+
+        $em->flush();
+
+        return $this->json($user);
+    }
 
 
 }
