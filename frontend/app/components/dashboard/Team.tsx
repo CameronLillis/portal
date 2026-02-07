@@ -1,93 +1,157 @@
+'use client';
+
 import { TeamViewDash } from "./TeamViewDash";
 import { TeamCreationDash } from "./TeamCreationDash";
 import { TeamModals } from "./TeamModals";
 import { TeamInvitationsDash } from "./TeamInvitationDash";
 import { TeamProjectDash } from "./TeamProjectDash";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import api from "@/lib/api";
+import type { Team as TeamType, User } from "@/lib/types";
 
-const INITIAL_MEMBERS = ["Sally", "Alice", "Bob", "Kate", "Fred", "Alex", "Noah", "Billy"];
 const TEAM_LIMIT = 5;
-export interface TeamData {
-  teamName: string;
-  isTeamCreated: boolean;
-  currentTeam: { name: string }[];
-  availableMembers: string[];
-  teamLimit: number;
+
+/** Decode JWT payload to get current user email & roles */
+function decodeJwt(): { email: string; roles: string[] } | null {
+  if (typeof window === 'undefined') return null;
+  const token = localStorage.getItem('authToken');
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return { email: payload.username ?? payload.email, roles: payload.roles ?? [] };
+  } catch {
+    return null;
+  }
 }
 
-interface TeamProps {
-  teamData: TeamData;
-  setTeam: (updater: (prev: TeamData) => TeamData) => void;
+export interface TeamMemberView {
+  id: number;
+  name: string;
+  email: string;
 }
 
-export function Team({ teamData, setTeam }: TeamProps) {
-  const { teamName, isTeamCreated, currentTeam, availableMembers, teamLimit } = teamData;
-  const [search, setSearch] = useState("");
-  const [showDisbandModal, setShowDisbandModal] = useState(false);
+export interface AvailableUser {
+  id: number;
+  name: string;
+  email: string;
+}
+
+export function Team() {
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showDisbandModal, setShowDisbandModal] = useState(false);
 
-  const handleCreateTeam = () => {
-    if (!teamName.trim()) return setError("Please enter a team name.");
-    setTeam(prev => ({ ...prev, isTeamCreated: true }));
-  };
+  const [currentUser, setCurrentUser] = useState<TeamMemberView | null>(null);
+  const [isLeader, setIsLeader] = useState(false);
+  const [userTeam, setUserTeam] = useState<TeamType | null>(null);
+  const [availableUsers, setAvailableUsers] = useState<AvailableUser[]>([]);
 
-  const confirmDisband = () => {
-    const membersToReturn = currentTeam.filter(member => member.name !== "User").map(member => member.name);
-    setTeam(prev => ({
-      ...prev,
-      availableMembers: [...prev.availableMembers, ...membersToReturn],
-      currentTeam: [{ name: "User" }],
-      isTeamCreated: false,
-      teamName: ""
-    }));
-    setShowDisbandModal(false);
-  };
+  const fetchData = useCallback(async () => {
+    const jwt = decodeJwt();
+    if (!jwt) return;
 
-  const addMember = (name: string) => {
-    if (currentTeam.length >= teamLimit) return setError(`Maximum capacity reached! A team can only have ${teamLimit} members.`);
-    setTeam(prev => ({
-      ...prev,
-      currentTeam: [...prev.currentTeam, { name }],
-      availableMembers: prev.availableMembers.filter(member => member !== name)
-    }));
-  };
+    try {
+      const [users, teams] = await Promise.all([
+        api.get<User[]>('/users'),
+        api.get<TeamType[]>('/teams'),
+      ]);
 
-  const removeMember = (name: string) => {
-    if (name === "User") return;  // Prevent removing the team leader
-    setTeam(prev => ({
-      ...prev,
-      currentTeam: prev.currentTeam.filter(member => member.name !== name),
-      availableMembers: [...prev.availableMembers, name]
-    }));
-  };
-  
-  const handleTeamAction = ( type: "add" | "remove" | "disband" | "leave", payload?: string) => {
-    if (type === "disband") {
-      setShowDisbandModal(true);
-    } 
-    else if (type === "leave") {
-      setTeam(prev => ({
-        ...prev,
-        isTeamCreated: false,
-        currentTeam: [{ name: "User" }],
-        teamName: ""
-      }));
+      // Find current user from user list
+      const me = users.find(u => u.email === jwt.email);
+      if (me) {
+        setCurrentUser({ id: me.id, name: me.name || me.email, email: me.email });
+      }
+
+      // Find user's team
+      const myTeam = teams.find(t =>
+        t.members?.some(m => m.email === jwt.email)
+      ) ?? null;
+      setUserTeam(myTeam);
+
+      // Determine leader from team data, not JWT (JWT roles are stale until re-login)
+      const meId = me?.id;
+      setIsLeader(!!myTeam && myTeam.leaderId === meId);
+
+      // Available users: those not in any team (and not the current user)
+      const available = users.filter(u => !u.team && u.email !== jwt.email);
+      setAvailableUsers(available.map(u => ({
+        id: u.id,
+        name: u.name || u.email,
+        email: u.email,
+      })));
+    } catch (err) {
+      console.error('Failed to fetch team data:', err);
+    } finally {
+      setLoading(false);
     }
-    else if (type === "add" && payload) {
-      addMember(payload);
-    } 
-    else if (type === "remove" && payload) {
-      removeMember(payload);
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  /* ---- Actions ---- */
+
+  const handleTeamCreated = () => {
+    fetchData();
+  };
+
+  const confirmDisband = async () => {
+    if (!userTeam) return;
+    try {
+      await api.delete(`/teams/${userTeam.id}`);
+      setShowDisbandModal(false);
+      await fetchData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to disband team');
+      setShowDisbandModal(false);
     }
   };
 
-  const handleCreationAction = (action: "updateName" | "create", value?: string) => {
-    if (action === "updateName" && value !== undefined) {
-      setTeam(prev => ({ ...prev, teamName: value }));
+  const leaveTeam = async () => {
+    if (!userTeam || !currentUser) return;
+    try {
+      const currentMemberIds = userTeam.members?.map(m => m.id) ?? [];
+      const newMemberIds = currentMemberIds.filter(id => id !== currentUser.id);
+      await api.patch(`/teams/${userTeam.id}/members`, { memberIds: newMemberIds });
+      await fetchData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to leave team');
     }
-    if (action === "create") {
-      handleCreateTeam();
+  };
+
+  const addMember = async (userId: number) => {
+    if (!userTeam) return;
+    const currentMemberIds = userTeam.members?.map(m => m.id) ?? [];
+    if (currentMemberIds.length >= TEAM_LIMIT) {
+      setError(`Maximum capacity reached! A team can only have ${TEAM_LIMIT} members.`);
+      return;
     }
+    try {
+      await api.patch(`/teams/${userTeam.id}/members`, { memberIds: [...currentMemberIds, userId] });
+      await fetchData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to add member');
+    }
+  };
+
+  const removeMember = async (userId: number) => {
+    if (!userTeam) return;
+    const currentMemberIds = userTeam.members?.map(m => m.id) ?? [];
+    const newMemberIds = currentMemberIds.filter(id => id !== userId);
+    try {
+      await api.patch(`/teams/${userTeam.id}/members`, { memberIds: newMemberIds });
+      await fetchData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to remove member');
+    }
+  };
+
+  const handleTeamAction = (type: "add" | "remove" | "disband" | "leave", payload?: number) => {
+    if (type === "disband") setShowDisbandModal(true);
+    else if (type === "leave") leaveTeam();
+    else if (type === "add" && payload !== undefined) addMember(payload);
+    else if (type === "remove" && payload !== undefined) removeMember(payload);
   };
 
   const handleModalAction = (action: "closeError" | "cancelDisband" | "confirmDisband") => {
@@ -95,58 +159,69 @@ export function Team({ teamData, setTeam }: TeamProps) {
     if (action === "cancelDisband") setShowDisbandModal(false);
     if (action === "confirmDisband") confirmDisband();
   };
-  const [invitations, setInvitations] = useState<TeamData[]>([
-    {
-      teamName: "Code Warriors",
-      isTeamCreated: true,
-      currentTeam: [{ name: "Alex" }, { name: "Sam" }],
-      availableMembers: INITIAL_MEMBERS,
-      teamLimit: TEAM_LIMIT
-    },
-    {
-      teamName: "Debuggers United",
-      isTeamCreated: true,
-      currentTeam: [{ name: "Lily" }, { name: "Mark" }, { name: "Nina" }],
-      availableMembers: INITIAL_MEMBERS,
-      teamLimit: TEAM_LIMIT
-    },
-    {
-      teamName: "Script Kiddies",
-      isTeamCreated: true,
-      currentTeam: [{ name: "Eva" }],
-      availableMembers: INITIAL_MEMBERS,
-      teamLimit: TEAM_LIMIT
-    }
-  ]);
 
-  const handleInviteAction = (action: "accept" | "decline", team: TeamData) => {
-    if (action === "accept") {
-      const teamWithUser: TeamData = {
-        ...team,
-        currentTeam: [...team.currentTeam, { name: "User" }]
-      };
-      setTeam(() => teamWithUser);
-      setInvitations((prev) => prev.filter((t) => t.teamName !== team.teamName));
-    } else {
-      setInvitations((prev) => prev.filter((t) => t.teamName !== team.teamName));
+  const handleSaveProject = async (projectName: string, projectDetails: string) => {
+    if (!userTeam) return;
+    try {
+      await api.patch(`/teams/${userTeam.id}`, { projectName, projectDetails });
+      await fetchData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to save project');
     }
   };
-  
+
+  /* ---- Render ---- */
+
+  if (loading) {
+    return <div className="text-gray-400 text-center py-10">Loading...</div>;
+  }
+
+  const isTeamCreated = !!userTeam;
+  const teamName = userTeam?.teamName ?? '';
+
+  // Build members array with leader first
+  const members: TeamMemberView[] = [];
+  if (userTeam?.members) {
+    const leaderId = userTeam.leaderId;
+    const leaderMember = userTeam.members.find(m => m.id === leaderId);
+    if (leaderMember) {
+      members.push({ id: leaderMember.id, name: leaderMember.name || leaderMember.email, email: leaderMember.email });
+    }
+    userTeam.members.forEach(m => {
+      if (m.id !== leaderId) {
+        members.push({ id: m.id, name: m.name || m.email, email: m.email });
+      }
+    });
+  }
+
   return (
-    <>  
-      <TeamModals state={{ error, showDisband: showDisbandModal, teamName: teamData.teamName }} onAction={handleModalAction} />
-      
+    <>
+      <TeamModals
+        state={{ error, showDisband: showDisbandModal, teamName }}
+        onAction={handleModalAction}
+      />
+
       {isTeamCreated ? (
         <>
-          <TeamViewDash teamData={teamData} onAction={handleTeamAction} />
-          
-          <TeamProjectDash teamData={teamData} />
+          <TeamViewDash
+            teamName={teamName}
+            isLeader={isLeader}
+            currentUserId={currentUser?.id ?? 0}
+            currentTeam={members}
+            availableMembers={availableUsers}
+            teamLimit={TEAM_LIMIT}
+            onAction={handleTeamAction}
+          />
+          <TeamProjectDash
+            isLeader={isLeader}
+            project={userTeam?.project ?? { name: '', details: '' }}
+            onSaveProject={handleSaveProject}
+          />
         </>
       ) : (
         <>
-          <TeamCreationDash teamData={teamData} onAction={handleCreationAction} />
-
-          <TeamInvitationsDash invitations={invitations} onAction={handleInviteAction} />
+          <TeamCreationDash onTeamCreated={handleTeamCreated} />
+          <TeamInvitationsDash invitations={[]} onAction={() => {}} />
         </>
       )}
     </>

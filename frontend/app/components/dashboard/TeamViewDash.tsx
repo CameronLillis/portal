@@ -1,23 +1,24 @@
 import { useState } from "react";
 import style from "../../dashboard/dashboard.module.css";
-import type { TeamData } from "./Team"; 
+import type { TeamMemberView, AvailableUser } from "./Team";
 
 interface TeamViewDashProps {
-  teamData: TeamData;
-  onAction: (type: "add" | "remove" | "disband" | "leave", payload?: string) => void;
+  teamName: string;
+  isLeader: boolean;
+  currentUserId: number;
+  currentTeam: TeamMemberView[];
+  availableMembers: AvailableUser[];
+  teamLimit: number;
+  onAction: (type: "add" | "remove" | "disband" | "leave", payload?: number) => void;
 }
 
-export function TeamViewDash({ teamData, onAction }: TeamViewDashProps) {
+export function TeamViewDash({ teamName, isLeader, currentUserId, currentTeam, availableMembers, teamLimit, onAction }: TeamViewDashProps) {
   const [search, setSearch] = useState("");
-  
-  const { teamName, currentTeam, availableMembers, teamLimit } = teamData;
 
   const filteredMembers = availableMembers.filter((member) =>
-    member.toLowerCase().includes(search.toLowerCase())
+    member.name.toLowerCase().includes(search.toLowerCase()) ||
+    member.email.toLowerCase().includes(search.toLowerCase())
   );
-
-  // User is leader if they are the first member in the currentTeam array
-  const isLeader = currentTeam.length > 0 && currentTeam[0].name === "User";
 
   return (
     <div className={`${style.card} space-y-8`}>
@@ -52,7 +53,7 @@ export function TeamViewDash({ teamData, onAction }: TeamViewDashProps) {
           <h3 className={style.secondaryTitle}>Current Members</h3>
           <div className="space-y-3">
             {currentTeam.map((member, index) => (
-              <div key={member.name} className="flex justify-between items-center bg-white/5 p-3 rounded-lg">
+              <div key={member.id} className="flex justify-between items-center bg-white/5 p-3 rounded-lg">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className={style.memberAvatar}>👤</div>
                   <span className="truncate max-w-[100px] md:max-w-none">{member.name}</span>
@@ -64,9 +65,9 @@ export function TeamViewDash({ teamData, onAction }: TeamViewDashProps) {
                   )}
                 </div>
 
-                {isLeader && index !== 0 && (
+                {isLeader && member.id !== currentUserId && (
                   <button 
-                    onClick={() => onAction("remove", member.name)} 
+                    onClick={() => onAction("remove", member.id)} 
                     className={`${style.warnButton} text-xs`}
                   >
                     Remove
@@ -89,10 +90,10 @@ export function TeamViewDash({ teamData, onAction }: TeamViewDashProps) {
             />
             <div className={`${style.primaryScroll} space-y-2 max-h-48 overflow-y-auto pr-2 mt-2`}>
               {filteredMembers.map((member) => (
-                <div key={member} className="flex justify-between items-center p-2 border-b border-white/5 hover:bg-white/5 rounded">
-                  {member}
+                <div key={member.id} className="flex justify-between items-center p-2 border-b border-white/5 hover:bg-white/5 rounded">
+                  {member.name}
                   <button 
-                    onClick={() => onAction("add", member)} 
+                    onClick={() => onAction("add", member.id)} 
                     className="text-[var(--primary)] cursor-pointer whitespace-nowrap"
                   >
                     + Invite

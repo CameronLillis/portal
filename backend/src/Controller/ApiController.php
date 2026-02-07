@@ -142,6 +142,10 @@ class ApiController extends AbstractController
         if (!$user) {
             return $this->json(['message' => 'Auth required'], 401);
         }
+
+        if ($user->getTeam()) {
+            return $this->json(['message' => 'User is already in a team'], 400);
+        }
     
         $data = json_decode($request->getContent(), true);
         $teamName = trim((string)($data['teamName'] ?? ''));
@@ -168,9 +172,10 @@ class ApiController extends AbstractController
         // Based on your schema screenshot: user.team is a varchar(128)
         $user->setTeam($teamName); 
         
-        // If you want to explicitly track the leader, 
-        // you would add a 'leader_id' column to the 'team' table
-        // $team->setLeader($user); 
+        // Add team leader role
+        $currentRoles = array_diff($user->getRoles(), ['ROLE_USER']);
+        $currentRoles[] = 'ROLE_TEAM_LEADER';
+        $user->setRoles($currentRoles);
     
         $em->flush();
     
@@ -184,6 +189,7 @@ class ApiController extends AbstractController
         $users = $em->getRepository(User::class)->findAll();
 
         $membersByTeam = [];
+        $leaderByTeam = [];
         foreach ($users as $user) {
             $userTeam = $user->getTeam();
             if (!$userTeam) {
@@ -197,11 +203,16 @@ class ApiController extends AbstractController
                 'track' => $user->getTrack() ?? '',
                 'state' => $user->getState() ?? 'Pending',
             ];
+
+            if (in_array('ROLE_TEAM_LEADER', $user->getRoles(), true)) {
+                $leaderByTeam[$userTeam] = $user->getId();
+            }
         }
 
         $json_data = array_map(fn(Team $t) => $this->serializeTeam(
             $t,
-            $membersByTeam[$t->getTeamName() ?? ''] ?? []
+            $membersByTeam[$t->getTeamName() ?? ''] ?? [],
+            $leaderByTeam[$t->getTeamName() ?? ''] ?? null
         ), $teams);
 
         return $this->json($json_data);
@@ -316,7 +327,8 @@ class ApiController extends AbstractController
             'state' => $u->getState() ?? 'Pending',
         ], $updatedMembers);
 
-        return $this->json($this->serializeTeam($team, $jsonMembers));
+        $leaderId = $this->findTeamLeaderId($em, $currentName);
+        return $this->json($this->serializeTeam($team, $jsonMembers, $leaderId));
     }
 
     #[Route('/teams/{id}/members', name: 'teams_members_update', methods: ['PATCH'])]
@@ -352,17 +364,57 @@ class ApiController extends AbstractController
             return $this->json(['message' => 'Team has no name and cannot be assigned'], 400);
         }
 
+        // Find the team leader
+        $allUsers = $em->getRepository(User::class)->findAll();
+        $leader = null;
+        foreach ($allUsers as $u) {
+            if ($u->getTeam() === $teamName && in_array('ROLE_TEAM_LEADER', $u->getRoles())) {
+                $leader = $u;
+                break;
+            }
+        }
+        if (!$leader) {
+            return $this->json(['message' => 'Team has no leader'], 400);
+        }
+        if (!in_array($leader->getId(), $memberIds)) {
+            return $this->json(['message' => 'Cannot remove team leader from team'], 400);
+        }
+
+        // Check if selected users are not in another team
+        foreach ($selectedUsers as $member) {
+            if ($member->getTeam() && $member->getTeam() !== $teamName) {
+                return $this->json(['message' => 'User ' . $member->getId() . ' is already in another team'], 400);
+            }
+        }
+
         $currentMembers = $em->getRepository(User::class)->findBy(['team' => $teamName]);
         $selectedIdsLookup = array_fill_keys($memberIds, true);
 
         foreach ($currentMembers as $member) {
             if (!isset($selectedIdsLookup[$member->getId()])) {
                 $member->setTeam(null);
+                $currentRoles = array_diff($member->getRoles(), ['ROLE_USER', 'ROLE_TEAM_LEADER', 'ROLE_MEMBER']);
+                $member->setRoles($currentRoles);
             }
         }
 
         foreach ($selectedUsers as $member) {
             $member->setTeam($teamName);
+        }
+
+        // Set roles
+        foreach ($selectedUsers as $member) {
+            $currentRoles = array_diff($member->getRoles(), ['ROLE_USER']);
+            if ($member->getId() === $leader->getId()) {
+                if (!in_array('ROLE_TEAM_LEADER', $currentRoles)) {
+                    $currentRoles[] = 'ROLE_TEAM_LEADER';
+                }
+            } else {
+                if (!in_array('ROLE_MEMBER', $currentRoles)) {
+                    $currentRoles[] = 'ROLE_MEMBER';
+                }
+            }
+            $member->setRoles($currentRoles);
         }
 
         $em->flush();
@@ -376,10 +428,44 @@ class ApiController extends AbstractController
             'state' => $u->getState() ?? 'Pending',
         ], $updatedMembers);
 
-        return $this->json($this->serializeTeam($team, $jsonMembers));
+        $leaderId = $this->findTeamLeaderId($em, $teamName);
+        return $this->json($this->serializeTeam($team, $jsonMembers, $leaderId));
     }
 
-    private function serializeTeam(Team $team, array $members): array
+    #[Route('/teams/{id}', name: 'delete_team', methods: ['DELETE'])]
+    public function deleteTeam(EntityManagerInterface $em, int $id): JsonResponse
+    {
+        $team = $em->getRepository(Team::class)->find($id);
+        if (!$team) {
+            return $this->json(['message' => 'Team not found'], 404);
+        }
+
+        $teamName = $team->getTeamName();
+        $members = $em->getRepository(User::class)->findBy(['team' => $teamName]);
+        foreach ($members as $member) {
+            $member->setTeam(null);
+            $currentRoles = array_diff($member->getRoles(), ['ROLE_USER', 'ROLE_TEAM_LEADER', 'ROLE_MEMBER']);
+            $member->setRoles($currentRoles);
+        }
+
+        $em->remove($team);
+        $em->flush();
+
+        return $this->json(['message' => 'Team deleted'], 200);
+    }
+
+    private function findTeamLeaderId(EntityManagerInterface $em, string $teamName): ?int
+    {
+        $members = $em->getRepository(User::class)->findBy(['team' => $teamName]);
+        foreach ($members as $member) {
+            if (in_array('ROLE_TEAM_LEADER', $member->getRoles(), true)) {
+                return $member->getId();
+            }
+        }
+        return null;
+    }
+
+    private function serializeTeam(Team $team, array $members, ?int $leaderId = null): array
     {
         return [
             'id' => $team->getId(),
@@ -391,6 +477,7 @@ class ApiController extends AbstractController
                 'details' => $team->getProjectDetails() ?? '',
             ],
             'assignments' => $team->getJudgeAssignments() ?? [],
+            'leaderId' => $leaderId,
             'members' => $members,
         ];
     }

@@ -3,7 +3,11 @@ import style from "../../dashboard/dashboard.module.css";
 import api from "@/lib/api";
 import type {ErrorResponse, CreateTeamRequest, Track, Team} from "@/lib/types";
 
-export function TeamCreationDash() {
+interface TeamCreationDashProps {
+  onTeamCreated: () => void;
+}
+
+export function TeamCreationDash({ onTeamCreated }: TeamCreationDashProps) {
   const [teamName, setTeamName] = useState('');
   const [track, setTrack] = useState<Track>('Software');
   const [loading, setLoading] = useState(false);
@@ -28,11 +32,12 @@ export function TeamCreationDash() {
     };
 
     try {
-      const response = await api.post('/teams', requestData);
-      setCreatedTeam(response.data);
+      const response = await api.post<Team>('/teams', requestData);
+      setCreatedTeam(response);
       setSuccess(true);
       setTeamName('');
       setTrack('Software');
+      onTeamCreated();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create team');
     } finally {

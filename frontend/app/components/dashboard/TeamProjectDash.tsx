@@ -1,20 +1,26 @@
 import style from "../../dashboard/dashboard.module.css";
-import { useState } from "react";
-import type { TeamData } from "./Team";
+import { useState, useEffect } from "react";
 
 interface TeamProjectDashProps {
-  teamData: TeamData;
+  isLeader: boolean;
+  project: { name: string; details: string };
+  onSaveProject: (name: string, details: string) => Promise<void>;
 }
 
-export function TeamProjectDash({ teamData }: TeamProjectDashProps) {
-  // 1. Determine Identity
-  const isLeader = teamData.currentTeam.length > 0 && teamData.currentTeam[0].name === "User";
-
+export function TeamProjectDash({ isLeader, project, onSaveProject }: TeamProjectDashProps) {
   // 2. Project State
-  const [name, setName] = useState("");
-  const [desc, setDesc] = useState("");
-  const [isCreated, setIsCreated] = useState(false);
+  const [name, setName] = useState(project.name);
+  const [desc, setDesc] = useState(project.details);
+  const [isCreated, setIsCreated] = useState(!!project.name);
   const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Sync from parent when project data changes
+  useEffect(() => {
+    setName(project.name);
+    setDesc(project.details);
+    setIsCreated(!!project.name);
+  }, [project.name, project.details]);
 
   // Mock Data
   const rounds = [
@@ -42,18 +48,6 @@ export function TeamProjectDash({ teamData }: TeamProjectDashProps) {
                 <h2 className={`${style.primaryTitle} mb-0`}>
                   Pending Creation
                 </h2>
-          
-                {/* Debug button placed where the EDIT button usually sits */}
-                <button 
-                  onClick={() => {
-                    setName("Project Alpha (Debug)");
-                    setDesc("This is a simulated project description to verify the Member View layout.");
-                    setIsCreated(true);
-                  }}
-                  className={`${style.warnButton} text-[10px] px-3 py-1 border-dashed opacity-50 hover:opacity-100 transition-opacity`}
-                >
-                  [DEBUG] SIMULATE
-                </button>
               </div>
                 
               {/* Content Section: Aligned to the left under the header */}
@@ -114,15 +108,19 @@ export function TeamProjectDash({ teamData }: TeamProjectDashProps) {
               </div>
 
               <button 
-                onClick={() => {
+                onClick={async () => {
                   if (name && desc) {
+                    setSaving(true);
+                    await onSaveProject(name, desc);
+                    setSaving(false);
                     setIsCreated(true);
                     setIsEditing(false);
                   }
                 }}
                 className={style.primaryButton}
+                disabled={saving}
               >
-                {isCreated ? "Save Changes" : "Create Project"}
+                {saving ? 'Saving...' : isCreated ? "Save Changes" : "Create Project"}
               </button>
             </div>
           )}

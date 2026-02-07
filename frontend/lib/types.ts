@@ -71,6 +71,7 @@ export interface Team {
   track: Track;
   project: TeamProject;
   assignments: Record<string, number[]>;
+  leaderId: number | null;
   members?: TeamMember[];
 }
 

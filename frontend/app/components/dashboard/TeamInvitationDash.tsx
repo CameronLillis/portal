@@ -1,11 +1,12 @@
 import style from "../../dashboard/dashboard.module.css";
-import type { TeamData } from "./Team";
+
+interface InvitationItem {
+  teamName: string;
+}
 
 interface TeamInvitationsProps {
-  // Prop 1: List of full TeamData objects acting as invites
-  invitations: TeamData[]; 
-  // Prop 2: Handler sends back the specific team object to overwrite state
-  onAction: (action: "accept" | "decline", team: TeamData) => void;
+  invitations: InvitationItem[];
+  onAction: (action: "accept" | "decline", team: InvitationItem) => void;
 }
 
 export function TeamInvitationsDash({ invitations, onAction }: TeamInvitationsProps) {
