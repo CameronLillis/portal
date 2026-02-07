@@ -1,26 +1,54 @@
 import style from "../../dashboard/dashboard.module.css";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import api from "@/lib/api";
+import { useTeamContext } from "./TeamContext";
+import type { Team } from "@/lib/types";
 
-interface TeamProjectDashProps {
-  isLeader: boolean;
-  project: { name: string; details: string };
-  onSaveProject: (name: string, details: string) => Promise<void>;
-}
-
-export function TeamProjectDash({ isLeader, project, onSaveProject }: TeamProjectDashProps) {
-  // 2. Project State
-  const [name, setName] = useState(project.name);
-  const [desc, setDesc] = useState(project.details);
-  const [isCreated, setIsCreated] = useState(!!project.name);
+export function TeamProjectDash() {
+  const { teamId, currentUserId } = useTeamContext();
+  const [name, setName] = useState("");
+  const [desc, setDesc] = useState("");
+  const [isCreated, setIsCreated] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isLeader, setIsLeader] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Sync from parent when project data changes
-  useEffect(() => {
-    setName(project.name);
-    setDesc(project.details);
-    setIsCreated(!!project.name);
-  }, [project.name, project.details]);
+  const fetchProject = useCallback(async () => {
+    try {
+      const teams = await api.get<Team[]>('/teams');
+      const team = teams.find(t => t.id === teamId);
+      if (!team) return;
+
+      setIsLeader(team.leaderId === currentUserId);
+      setName(team.project.name);
+      setDesc(team.project.details);
+      setIsCreated(!!team.project.name);
+    } catch (err) {
+      console.error('Failed to fetch project:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [teamId, currentUserId]);
+
+  useEffect(() => { fetchProject(); }, [fetchProject]);
+
+  const handleSave = async () => {
+    if (!name || !desc) return;
+    setSaving(true);
+    try {
+      await api.patch(`/teams/${teamId}`, { projectName: name, projectDetails: desc });
+      setIsCreated(true);
+      setIsEditing(false);
+      await fetchProject();
+    } catch (err: any) {
+      console.error('Failed to save project:', err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return null;
 
   // Mock Data
   const rounds = [
@@ -108,15 +136,7 @@ export function TeamProjectDash({ isLeader, project, onSaveProject }: TeamProjec
               </div>
 
               <button 
-                onClick={async () => {
-                  if (name && desc) {
-                    setSaving(true);
-                    await onSaveProject(name, desc);
-                    setSaving(false);
-                    setIsCreated(true);
-                    setIsEditing(false);
-                  }
-                }}
+                onClick={handleSave}
                 className={style.primaryButton}
                 disabled={saving}
               >

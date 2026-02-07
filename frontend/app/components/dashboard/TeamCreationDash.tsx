@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import style from "../../dashboard/dashboard.module.css";
 import api from "@/lib/api";
+import { useTeamContext } from "./TeamContext";
 import type {ErrorResponse, CreateTeamRequest, Track, Team} from "@/lib/types";
 
-interface TeamCreationDashProps {
-  onTeamCreated: () => void;
-}
-
-export function TeamCreationDash({ onTeamCreated }: TeamCreationDashProps) {
+export function TeamCreationDash() {
+  const { refresh } = useTeamContext();
   const [teamName, setTeamName] = useState('');
   const [track, setTrack] = useState<Track>('Software');
   const [loading, setLoading] = useState(false);
@@ -37,7 +35,7 @@ export function TeamCreationDash({ onTeamCreated }: TeamCreationDashProps) {
       setSuccess(true);
       setTeamName('');
       setTrack('Software');
-      onTeamCreated();
+      await refresh();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create team');
     } finally {
