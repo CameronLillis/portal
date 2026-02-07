@@ -27,6 +27,11 @@ export interface RegisterRequest {
   agreeTerms?: boolean;
 }
 
+export interface CreateTeamRequest {
+  teamName: string;
+  track: Track;
+}
+
 export interface ErrorResponse {
   message: string;
   error?: string;

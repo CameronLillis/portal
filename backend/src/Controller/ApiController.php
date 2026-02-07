@@ -133,7 +133,49 @@ class ApiController extends AbstractController
         return $this->json($user);
     }
 
-
+    #[Route('/teams', name: 'create_team', methods: ['POST'])]
+    public function createTeam(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser(); // Get current logged-in user
+        
+        if (!$user) {
+            return $this->json(['message' => 'Auth required'], 401);
+        }
+    
+        $data = json_decode($request->getContent(), true);
+        $teamName = trim((string)($data['teamName'] ?? ''));
+    
+        // 1. Validation
+        if ($teamName === '') {
+            return $this->json(['message' => 'Team name is required'], 400);
+        }
+    
+        $existing = $em->getRepository(Team::class)->findOneBy(['teamName' => $teamName]);
+        if ($existing) {
+            return $this->json(['message' => 'Team name already exists'], 409);
+        }
+    
+        // 2. Create the Team Entity
+        $team = new Team();
+        $team->setTeamName($teamName);
+        $team->setStatus('Unverified');
+        $team->setTrack($data['track'] ?? 'Software');
+        
+        $em->persist($team);
+    
+        // 3. Assign User to Team (This marks them as a member/leader)
+        // Based on your schema screenshot: user.team is a varchar(128)
+        $user->setTeam($teamName); 
+        
+        // If you want to explicitly track the leader, 
+        // you would add a 'leader_id' column to the 'team' table
+        // $team->setLeader($user); 
+    
+        $em->flush();
+    
+        return $this->json(['status' => 'success'], 201);
+    }
 
     #[Route('/teams', name: 'teams', methods: ['GET'])]
     public function retrieveTeams(EntityManagerInterface $em)
