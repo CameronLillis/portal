@@ -48,18 +48,57 @@ class ApiController extends AbstractController
             return $this->json(['message' => 'Password is required'], 400);
         }
 
-        if (strlen($data['password']) < 6 || strlen($data['password']) > 4096) {
-            return $this->json(['message' => 'Password must be between 6 and 4096 characters long'], 400);
+        if (strlen($data['password']) < 8 || strlen($data['password']) > 4096) {
+            return $this->json(['message' => 'Password must be between 8 and 4096 characters long'], 400);
         }
 
         if ($data['password'] && preg_match('/\s/', $data['password'])) {
             return $this->json(['message' => 'Password cannot contain whitespace characters'], 400);
         }
 
+        if ($data['password'] !== ($data['confirmPassword'])) {
+            return $this->json(['message' => 'Passwords do not match'], 400);
+        }
+
+
+        // Password Policy Rules
+        if ($data['password'] && !preg_match('/[A-Z]/', $data['password'])) {
+            return $this->json(['message' => 'Password must contain at least one uppercase letter'], 400);
+        }
+
+        if ($data['password'] && !preg_match('/[a-z]/', $data['password'])) {
+            return $this->json(['message' => 'Password must contain at least one lowercase letter'], 400);
+        }
+
+        if ($data['password'] && !preg_match('/[0-9]/', $data['password'])) {
+            return $this->json(['message' => 'Password must contain at least one number'], 400);
+        }
+
+        if ($data['password'] && !preg_match('/[\W_]/', $data['password'])) {
+            return $this->json(['message' => 'Password must contain at least one special character'], 400);
+        }
+
+
+        // Validate username
+        if (!isset($data['username']) || empty($data['username'])) {
+            return $this->json(['message' => 'Username is required'], 400);
+        }
+
+        if (strlen($data['username']) < 3 || strlen($data['username']) > 50) {
+            return $this->json(['message' => 'Username must be between 3 and 50 characters long'], 400);
+        }
+
+        if ($data['username'] && preg_match('/\s/', $data['username'])) {
+            return $this->json(['message' => 'Username cannot contain whitespace characters'], 400);
+        }
+
 
         $user = (new User());
         $user->setEmail($data['email'])
-            ->setPassword($passwordHasher->hashPassword($user, $data['password']));
+            ->setPassword($passwordHasher->hashPassword($user, $data['password']))
+            ->setName($data['username'])
+            ->setRoles(['ROLE_USER'])
+            ->setState('Pending');
 
         $em->persist($user);
         $em->flush();
