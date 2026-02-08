@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Invitation;
 use App\Entity\Team;
 use App\Entity\User;
 use Doctrine\ORM\EntityManagerInterface;
@@ -76,10 +77,10 @@ class ApiController extends AbstractController
     #[Route('/users', name: 'users', methods: ['GET'])]
     public function retrieveUsers(EntityManagerInterface $em)
     {
-        $users = array_filter(
+        $users = array_values(array_filter(
             $em->getRepository(User::class)->findAll(),
             fn(User $u) => !in_array('ROLE_JUDGE', $u->getRoles(), true)
-        );
+        ));
 
         $json_data = array_map(fn(User $u) => [
             'id' => $u->getId(),
@@ -179,7 +180,17 @@ class ApiController extends AbstractController
     
         $em->flush();
     
-        return $this->json(['status' => 'success'], 201);
+        // Return the created team with member data
+        $members = $em->getRepository(User::class)->findBy(['team' => $teamName]);
+        $memberData = array_map(fn(User $u) => [
+            'id' => $u->getId(),
+            'name' => $u->getName() ?? '',
+            'email' => $u->getEmail(),
+            'track' => $u->getTrack() ?? '',
+            'state' => $u->getState() ?? 'Pending',
+        ], $members);
+        
+        return $this->json($this->serializeTeam($team, $memberData, $user->getId()), 201);
     }
 
     #[Route('/teams', name: 'teams', methods: ['GET'])]
@@ -448,10 +459,265 @@ class ApiController extends AbstractController
             $member->setRoles($currentRoles);
         }
 
+        // Decline all pending invitations for this team
+        $pendingInvitations = $em->getRepository(Invitation::class)->findBy([
+            'team' => $team,
+            'status' => 'pending',
+        ]);
+        foreach ($pendingInvitations as $invitation) {
+            $invitation->setStatus('declined');
+        }
+
         $em->remove($team);
         $em->flush();
 
         return $this->json(['message' => 'Team deleted'], 200);
+    }
+
+    // ---- Invitation Endpoints ----
+
+    #[Route('/invitations', name: 'create_invitation', methods: ['POST'])]
+    public function createInvitation(Request $request, EntityManagerInterface $em): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['message' => 'Auth required'], 401);
+        }
+
+        $data = json_decode($request->getContent(), true);
+        $inviteeId = $data['inviteeId'] ?? null;
+
+        if (!$inviteeId) {
+            return $this->json(['message' => 'inviteeId is required'], 400);
+        }
+
+        // Sender must be a team leader
+        if (!in_array('ROLE_TEAM_LEADER', $user->getRoles(), true)) {
+            // Find team by user membership and leaderId
+            $teams = $em->getRepository(Team::class)->findAll();
+            $userTeam = null;
+            foreach ($teams as $t) {
+                $members = $em->getRepository(User::class)->findBy(['team' => $t->getTeamName()]);
+                foreach ($members as $m) {
+                    if ($m->getId() === $user->getId()) {
+                        $userTeam = $t;
+                        break 2;
+                    }
+                }
+            }
+            if (!$userTeam) {
+                return $this->json(['message' => 'You must be in a team to invite'], 400);
+            }
+            $leaderId = $this->findTeamLeaderId($em, $userTeam->getTeamName());
+            if ($leaderId !== $user->getId()) {
+                return $this->json(['message' => 'Only the team leader can send invitations'], 403);
+            }
+        }
+
+        // Find the team the user leads
+        $userTeamName = $user->getTeam();
+        if (!$userTeamName) {
+            return $this->json(['message' => 'You are not in a team'], 400);
+        }
+        $team = $em->getRepository(Team::class)->findOneBy(['teamName' => $userTeamName]);
+        if (!$team) {
+            return $this->json(['message' => 'Team not found'], 404);
+        }
+
+        // Check team capacity
+        $currentMembers = $em->getRepository(User::class)->findBy(['team' => $userTeamName]);
+        $pendingInvites = $em->getRepository(Invitation::class)->findBy(['team' => $team, 'status' => 'pending']);
+        if (count($currentMembers) + count($pendingInvites) >= 5) {
+            return $this->json(['message' => 'Team is at capacity (including pending invitations)'], 400);
+        }
+
+        $invitee = $em->getRepository(User::class)->find($inviteeId);
+        if (!$invitee) {
+            return $this->json(['message' => 'User not found'], 404);
+        }
+
+        if ($invitee->getTeam()) {
+            return $this->json(['message' => 'User is already in a team'], 400);
+        }
+
+        // Check for duplicate pending invitation
+        $existing = $em->getRepository(Invitation::class)->findOneBy([
+            'team' => $team,
+            'invitee' => $invitee,
+            'status' => 'pending',
+        ]);
+        if ($existing) {
+            return $this->json(['message' => 'Invitation already sent'], 409);
+        }
+
+        $invitation = new Invitation();
+        $invitation->setTeam($team);
+        $invitation->setInvitee($invitee);
+        $invitation->setStatus('pending');
+
+        $em->persist($invitation);
+        $em->flush();
+
+        return $this->json($this->serializeInvitation($invitation), 201);
+    }
+
+    #[Route('/invitations', name: 'list_invitations', methods: ['GET'])]
+    public function listInvitations(EntityManagerInterface $em): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['message' => 'Auth required'], 401);
+        }
+
+        $invitations = $em->getRepository(Invitation::class)->findBy([
+            'invitee' => $user,
+            'status' => 'pending',
+        ]);
+
+        $json = array_map(fn(Invitation $inv) => $this->serializeInvitation($inv), $invitations);
+
+        return $this->json($json);
+    }
+
+    #[Route('/teams/{id}/invitations', name: 'list_team_invitations', methods: ['GET'])]
+    public function listTeamInvitations(EntityManagerInterface $em, int $id): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['message' => 'Auth required'], 401);
+        }
+
+        $team = $em->getRepository(Team::class)->find($id);
+        if (!$team) {
+            return $this->json(['message' => 'Team not found'], 404);
+        }
+
+        // Check if user is a member of this team
+        if ($user->getTeam() !== $team->getTeamName()) {
+            return $this->json(['message' => 'Access denied'], 403);
+        }
+
+        $invitations = $em->getRepository(Invitation::class)->findBy([
+            'team' => $team,
+            'status' => 'pending',
+        ]);
+
+        $json = array_map(fn(Invitation $inv) => $this->serializeInvitationWithUser($inv), $invitations);
+
+        return $this->json($json);
+    }
+
+    #[Route('/invitations/{id}/accept', name: 'accept_invitation', methods: ['POST'])]
+    public function acceptInvitation(EntityManagerInterface $em, int $id): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['message' => 'Auth required'], 401);
+        }
+
+        $invitation = $em->getRepository(Invitation::class)->find($id);
+        if (!$invitation || $invitation->getInvitee()->getId() !== $user->getId()) {
+            return $this->json(['message' => 'Invitation not found'], 404);
+        }
+
+        if ($invitation->getStatus() !== 'pending') {
+            return $this->json(['message' => 'Invitation is no longer pending'], 400);
+        }
+
+        if ($user->getTeam()) {
+            return $this->json(['message' => 'You are already in a team'], 400);
+        }
+
+        $team = $invitation->getTeam();
+        $teamName = $team->getTeamName();
+
+        // Check team capacity
+        $currentMembers = $em->getRepository(User::class)->findBy(['team' => $teamName]);
+        if (count($currentMembers) >= 5) {
+            return $this->json(['message' => 'Team is already at maximum capacity'], 400);
+        }
+
+        // Add user to team
+        $user->setTeam($teamName);
+        $currentRoles = array_diff($user->getRoles(), ['ROLE_USER']);
+        if (!in_array('ROLE_MEMBER', $currentRoles)) {
+            $currentRoles[] = 'ROLE_MEMBER';
+        }
+        $user->setRoles($currentRoles);
+
+        // Mark this invitation as accepted
+        $invitation->setStatus('accepted');
+
+        // Decline all other pending invitations for this user
+        $otherInvitations = $em->getRepository(Invitation::class)->findBy([
+            'invitee' => $user,
+            'status' => 'pending',
+        ]);
+        foreach ($otherInvitations as $other) {
+            if ($other->getId() !== $invitation->getId()) {
+                $other->setStatus('declined');
+            }
+        }
+
+        $em->flush();
+
+        return $this->json(['message' => 'Invitation accepted'], 200);
+    }
+
+    #[Route('/invitations/{id}/decline', name: 'decline_invitation', methods: ['POST'])]
+    public function declineInvitation(EntityManagerInterface $em, int $id): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        if (!$user) {
+            return $this->json(['message' => 'Auth required'], 401);
+        }
+
+        $invitation = $em->getRepository(Invitation::class)->find($id);
+        if (!$invitation || $invitation->getInvitee()->getId() !== $user->getId()) {
+            return $this->json(['message' => 'Invitation not found'], 404);
+        }
+
+        if ($invitation->getStatus() !== 'pending') {
+            return $this->json(['message' => 'Invitation is no longer pending'], 400);
+        }
+
+        $invitation->setStatus('declined');
+        $em->flush();
+
+        return $this->json(['message' => 'Invitation declined'], 200);
+    }
+
+    private function serializeInvitation(Invitation $invitation): array
+    {
+        $team = $invitation->getTeam();
+        return [
+            'id' => $invitation->getId(),
+            'teamId' => $team->getId(),
+            'teamName' => $team->getTeamName(),
+            'status' => $invitation->getStatus(),
+        ];
+    }
+
+    private function serializeInvitationWithUser(Invitation $invitation): array
+    {
+        $team = $invitation->getTeam();
+        $invitee = $invitation->getInvitee();
+        return [
+            'id' => $invitation->getId(),
+            'teamId' => $team->getId(),
+            'teamName' => $team->getTeamName(),
+            'status' => $invitation->getStatus(),
+            'invitee' => [
+                'id' => $invitee->getId(),
+                'name' => $invitee->getName() ?: $invitee->getEmail(),
+                'email' => $invitee->getEmail(),
+            ],
+        ];
     }
 
     private function findTeamLeaderId(EntityManagerInterface $em, string $teamName): ?int

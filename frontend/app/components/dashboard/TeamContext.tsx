@@ -9,6 +9,7 @@ interface TeamContextValue {
   loading: boolean;
   teamId: number | null;
   currentUserId: number | null;
+  isLeader: boolean;
   refresh: () => Promise<void>;
 }
 
@@ -16,6 +17,7 @@ const TeamContext = createContext<TeamContextValue>({
   loading: true,
   teamId: null,
   currentUserId: null,
+  isLeader: false,
   refresh: async () => {},
 });
 
@@ -27,6 +29,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [teamId, setTeamId] = useState<number | null>(null);
   const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [isLeader, setIsLeader] = useState(false);
 
   const refresh = useCallback(async () => {
     const email = getJwtEmail();
@@ -45,6 +48,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
         t.members?.some(m => m.email === email)
       ) ?? null;
       setTeamId(myTeam?.id ?? null);
+      setIsLeader(me != null && myTeam != null && myTeam.leaderId === me.id);
     } catch (err) {
       console.error('Failed to check team status:', err);
     } finally {
@@ -55,7 +59,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   useEffect(() => { refresh(); }, [refresh]);
 
   return (
-    <TeamContext.Provider value={{ loading, teamId, currentUserId, refresh }}>
+    <TeamContext.Provider value={{ loading, teamId, currentUserId, isLeader, refresh }}>
       {children}
     </TeamContext.Provider>
   );

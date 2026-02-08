@@ -96,6 +96,9 @@ export function TeamCreationDash() {
           <h4 className={style.secondaryTitle}>Team Guidelines</h4>
           <ul className={`${style.list} space-y-2`}>
             <li>Names must be professional.</li>
+            <li>Teams are limited to 5 members.</li>
+            <li>Tracks must be either Software or Hardware.</li>
+            <li>After creation, make a project.</li>
           </ul>
         </div>
       </div>

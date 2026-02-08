@@ -5,13 +5,12 @@ import { useTeamContext } from "./TeamContext";
 import type { Team } from "@/lib/types";
 
 export function TeamProjectDash() {
-  const { teamId, currentUserId } = useTeamContext();
+  const { teamId, currentUserId, isLeader } = useTeamContext();
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
   const [isCreated, setIsCreated] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [isLeader, setIsLeader] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchProject = useCallback(async () => {
@@ -20,7 +19,6 @@ export function TeamProjectDash() {
       const team = teams.find(t => t.id === teamId);
       if (!team) return;
 
-      setIsLeader(team.leaderId === currentUserId);
       setName(team.project.name);
       setDesc(team.project.details);
       setIsCreated(!!team.project.name);

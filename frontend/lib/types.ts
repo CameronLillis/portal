@@ -80,3 +80,15 @@ export interface Judge {
   name: string;
   email: string;
 }
+
+export interface Invitation {
+  id: number;
+  teamId: number;
+  teamName: string;
+  status: string;
+  invitee?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
