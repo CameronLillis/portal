@@ -36,6 +36,7 @@ export default function RegisterPage() {
       alert(error.response?.data?.message || "An error occurred.");
     } finally {
       setLoading(false);
+    }
   };
 
   return (
