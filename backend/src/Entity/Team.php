@@ -40,12 +40,12 @@ class Team
     }
 
 
-    public function getTeamName(): ?string
+    public function getName(): ?string
     {
         return $this->name;
     }
 
-    public function setTeamName(string $name): static
+    public function setName(string $name): static
     {
         $this->name = $name;
 
