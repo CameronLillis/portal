@@ -33,7 +33,7 @@ export function TeamModals({ state, onAction }: TeamModalsProps) {
         <div className={style.modalBackdrop} style={{ zIndex: 70 }}>
           <div className={style.card}>
             <h2 className={style.secondaryTitle}>Disband Team?</h2>
-            <p className="mb-6">
+            <p className="mb-6 text-(--sub-text)">
               Are you sure you want to disband{" "}
               <span className="text-(--primary) font-bold">
                 &quot;{teamName}&quot;

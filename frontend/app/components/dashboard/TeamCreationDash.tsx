@@ -92,7 +92,7 @@ export function TeamCreationDash() {
           </div>
         </div>
 
-        <div className="flex-1 pt-10 border-t md:border-t-0 md:border-l border-[var(--primary-light-border)] md:pl-10">
+        <div className="flex-1 pt-10 border-t md:border-t-0 md:border-l border-(--primary-light-border) text-(--sub-text) md:pl-10">
           <h4 className={style.secondaryTitle}>Team Guidelines</h4>
           <ul className={`${style.list} space-y-2`}>
             <li>Names must be professional.</li>

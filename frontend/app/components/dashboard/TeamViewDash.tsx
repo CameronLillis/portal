@@ -195,7 +195,7 @@ export function TeamViewDash() {
                 <div key={member.id} className="flex justify-between items-center bg-white/5 p-3 rounded-lg">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={style.memberAvatar}>👤</div>
-                    <span className="truncate max-w-[100px] md:max-w-none">{member.name}</span>
+                    <span className="truncate max-w-25 md:max-w-none text-white">{member.name}</span>
                     
                     {index === 0 ? (
                       <span className="text-[10px] bg-white/10 px-2 py-0.5 rounded text-gray-400 uppercase font-bold">
@@ -233,11 +233,11 @@ export function TeamViewDash() {
               />
               <div className={`${style.primaryScroll} space-y-2 max-h-48 overflow-y-auto pr-2 mt-2`}>
                 {filteredMembers.map((member) => (
-                  <div key={member.id} className="flex justify-between items-center p-2 border-b border-white/5 hover:bg-white/5 rounded">
+                  <div key={member.id} className="flex justify-between items-center p-2 border-b border-white/5 hover:bg-white/5 rounded text-(--sub-text)">
                     {member.name}
                     <button 
                       onClick={() => sendInvitation(member.id)} 
-                      className="text-[var(--primary)] cursor-pointer whitespace-nowrap"
+                      className="text-(--primary) cursor-pointer whitespace-nowrap"
                     >
                       + Invite
                     </button>

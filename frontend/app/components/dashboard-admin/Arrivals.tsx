@@ -63,7 +63,7 @@ export default function Arrivals() {
           <input
             value={arrivalSearch}
             onChange={(e) => setArrivalSearch(e.target.value)}
-            className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm"
+            className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm text-(--sub-text)"
             placeholder="Search name, email, team"
           />
 
@@ -72,14 +72,14 @@ export default function Arrivals() {
             onChange={(e) =>
               setArrivalFilter(e.target.value as "All" | ArrivalState)
             }
-            className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm"
+            className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm text-(--sub-text)"
           >
             <option value="All">All</option>
             <option value="Pending">Pending</option>
             <option value="Checked In">Checked In</option>
           </select>
 
-          <div className="flex flex-row ml-auto gap-2">
+          <div className="flex flex-row ml-auto gap-2 text-(--sub-text)">
             <div className="rounded-xl bg-[#111435] border border-[#868585] px-3 py-2 text-sm font-bold">
               Pending: {arrivalCount.pending}
             </div>
@@ -95,7 +95,7 @@ export default function Arrivals() {
           {/* Members Table */}
           <table className="w-full text-sm">
             {/* Headeres */}
-            <thead className="opacity-70">
+            <thead className="text-(--card-header)">
               <tr className="border-b">
                 <th className="py-3 text-left font-medium">User</th>
                 <th className="py-3 text-left font-medium">Team</th>
@@ -138,7 +138,7 @@ export default function Arrivals() {
                               e.target.value as ArrivalState,
                             )
                           }
-                          className="rounded-lg bg-[#111435] border border-[#FEA70A] px-2 py-1 text-xs disabled:opacity-60"
+                          className="rounded-lg bg-[#111435] border border-[#FEA70A] px-2 py-1 text-xs disabled:opacity-60 text-(--sub-text)"
                         >
                           <option value="Pending">Pending</option>
                           <option value="Checked In">Checked In</option>

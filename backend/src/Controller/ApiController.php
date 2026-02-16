@@ -337,7 +337,7 @@ public function uploadFile(
             return $this->json(['message' => 'Team name is required'], 400);
         }
     
-        $existing = $em->getRepository(Team::class)->findOneBy(['teamName' => $teamName]);
+        $existing = $em->getRepository(Team::class)->findOneBy(['name' => $teamName]);
         if ($existing) {
             return $this->json(['message' => 'Team name already exists'], 409);
         }
@@ -702,7 +702,7 @@ public function uploadFile(
         if (!$userTeamName) {
             return $this->json(['message' => 'You are not in a team'], 400);
         }
-        $team = $em->getRepository(Team::class)->findOneBy(['teamName' => $userTeamName]);
+        $team = $em->getRepository(Team::class)->findOneBy(['name' => $userTeamName]);
         if (!$team) {
             return $this->json(['message' => 'Team not found'], 404);
         }
