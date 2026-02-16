@@ -203,18 +203,19 @@ class ApiController extends AbstractController
     public function updateProfile(Request $request, EntityManagerInterface $em): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user) {
+        if (!$user instanceof User) {
             return $this->json(['message' => 'Unauthorized'], 401);
         }
 
         $data = json_decode($request->getContent(), true);
 
         if (isset($data['track'])) {
-            $user->setTrack($data['track']);
+            $user->setTrack((string) $data['track']);
         }
 
         if (isset($data['major'])) {
-            $user->setMajor($data['major']);
+            $major = trim((string) $data['major']);
+            $user->setMajor($major !== '' ? $major : null);
         }
 
         $em->flush();
@@ -418,7 +419,7 @@ public function uploadFile(
         }
 
         $data = json_decode($request->getContent(), true) ?? [];
-        $currentName = $team->getName();
+        $currentName = $team->getTeamName();
         if (!$currentName) {
             return $this->json(['message' => 'Team has no current name'], 400);
         }
@@ -551,7 +552,7 @@ public function uploadFile(
             }
         }
 
-        $teamName = $team->getName();
+        $teamName = $team->getTeamName();
         if (!$teamName) {
             return $this->json(['message' => 'Team has no name and cannot be assigned'], 400);
         }
