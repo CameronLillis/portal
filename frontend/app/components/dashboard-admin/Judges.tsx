@@ -30,8 +30,8 @@ export default function JudgesAdminPage() {
     setError(null);
     try {
       const [judgeResponse, teamResponse] = await Promise.all([
-        api.get<Judge[]>("/judges"),
-        api.get<Team[]>("/teams"),
+        api.get<Judge[]>("/admin/judges"),
+        api.get<Team[]>("/admin/teams"),
       ]);
       setJudges(judgeResponse);
       setTeams(teamResponse);

@@ -7,7 +7,7 @@ import api from "@/lib/api";
 import type { ArrivalState, User } from "@/lib/types";
 
 export default function Arrivals() {
-  const { data, refetch } = useApi<User[]>("/users");
+  const { data, refetch } = useApi<User[]>("/admin/users");
   const userData = useMemo(() => data ?? [], [data]);
 
   // Update the state when searching and filtering
@@ -22,7 +22,7 @@ export default function Arrivals() {
     newState: ArrivalState,
   ) => {
     try {
-      await api.patch(`/users/${userId}`, { state: newState });
+      await api.patch(`/admin/users/${userId}`, { state: newState });
       await refetch();
     } catch (error) {
       console.error("Error updating arrival state:", error);

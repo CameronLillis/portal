@@ -151,9 +151,9 @@ export default function TeamsAdminPage() {
 
     try {
       const [teamResponse, userResponse, judgeResponse] = await Promise.all([
-        api.get<Team[]>("/teams"),
-        api.get<User[]>("/users"),
-        api.get<Judge[]>("/judges"),
+        api.get<Team[]>("/admin/teams"),
+        api.get<User[]>("/admin/users"),
+        api.get<Judge[]>("/admin/judges"),
       ]);
 
       setTeams(teamResponse.map(normalizeTeam));
@@ -223,7 +223,7 @@ export default function TeamsAdminPage() {
     setSavingTeamInfo(true);
     setError(null);
     try {
-      const updated = await api.patch<Team>(`/teams/${activeTeam.id}`, {
+      const updated = await api.patch<Team>(`/admin/teams/${activeTeam.id}`, {
         name: teamName,
         status: draftStatus,
         track: draftTrack,
@@ -243,7 +243,7 @@ export default function TeamsAdminPage() {
     setSavingProject(true);
     setError(null);
     try {
-      const updated = await api.patch<Team>(`/teams/${activeTeam.id}`, {
+      const updated = await api.patch<Team>(`/admin/teams/${activeTeam.id}`, {
         projectName: draftProjectName,
         projectDetails: draftProjectDetails,
       });
@@ -285,7 +285,7 @@ export default function TeamsAdminPage() {
     setSavingMembers(true);
     setError(null);
     try {
-      const updated = await api.patch<Team>(`/teams/${activeTeam.id}/members`, {
+      const updated = await api.patch<Team>(`/admin/teams/${activeTeam.id}/members`, {
         memberIds: selectedMemberIds,
       });
       applyUpdatedTeam(updated);
@@ -344,7 +344,7 @@ export default function TeamsAdminPage() {
     setSavingAssignments(true);
     setError(null);
     try {
-      const updated = await api.patch<Team>(`/teams/${activeTeam.id}`, {
+      const updated = await api.patch<Team>(`/admin/teams/${activeTeam.id}`, {
         judgeAssignments: draftAssignments,
       });
       applyUpdatedTeam(updated);
