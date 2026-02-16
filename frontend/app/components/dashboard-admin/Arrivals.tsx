@@ -151,7 +151,7 @@ export default function Arrivals() {
 
               {filteredUser.length === 0 && (
                 <tr>
-                  <td className="py-6 text-center opacity-70" colSpan={5}>
+                  <td className="py-6 text-center opacity-70 text-(--sub-text)" colSpan={5}>
                     No matching users.
                   </td>
                 </tr>
