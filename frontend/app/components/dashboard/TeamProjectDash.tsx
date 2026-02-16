@@ -39,7 +39,7 @@ export function TeamProjectDash() {
       setIsCreated(true);
       setIsEditing(false);
       await fetchProject();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to save project:', err);
     } finally {
       setSaving(false);
@@ -79,7 +79,7 @@ export function TeamProjectDash() {
               {/* Content Section: Aligned to the left under the header */}
               <div className="pt-2">
                 <p className="text-gray-400 max-w-md leading-relaxed">
-                  Your Team Leader hasn't created the project yet. Once they set the scope, 
+                  Your Team Leader hasn&apos;t created the project yet. Once they set the scope, 
                   the details and judge feedback will appear here.
                 </p>
               </div>

@@ -441,7 +441,7 @@ public function uploadFile(
                     $member->setTeam($newTeamName);
                 }
 
-                $team->setName($newTeamName);
+                $team->setTeamName($newTeamName);
                 $currentName = $newTeamName;
             }
         }
@@ -917,7 +917,7 @@ public function uploadFile(
     {
         return [
             'id' => $team->getId(),
-            'teamName' => $team->getName(),
+            'teamName' => $team->getTeamName(),
             'status' => $team->getStatus() ?? 'Unverified',
             'track' => $team->getTrack() ?? 'Software',
             'project' => [
