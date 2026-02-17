@@ -61,18 +61,13 @@ export default function TeamsAdminPage() {
   const [draftTrack, setDraftTrack] = useState<Track>("Software");
   const [draftProjectName, setDraftProjectName] = useState("");
   const [draftProjectDetails, setDraftProjectDetails] = useState("");
-  const [draftAssignments, setDraftAssignments] = useState<
-    Record<string, number[]>
-  >({});
+  const [draftAssignments, setDraftAssignments] = useState<Record<string, number[]>>({});
   const [assignmentRound, setAssignmentRound] = useState<string>(ROUNDS[0].id);
   const [assignmentJudgeText, setAssignmentJudgeText] = useState<string>("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
 
-  const activeTeam = useMemo(
-    () => teams.find((team) => team.id === activeTeamId) ?? null,
-    [teams, activeTeamId],
-  );
+  const activeTeam = useMemo(() => teams.find((team) => team.id === activeTeamId) ?? null, [teams, activeTeamId]);
 
   const filteredTeams = useMemo(() => {
     const query = norm(search);
@@ -82,22 +77,14 @@ export default function TeamsAdminPage() {
         if (!query) return true;
         const inTeam = norm(team.teamName).includes(query);
         const inTrack = norm(team.track).includes(query);
-        const inProject =
-          norm(team.project.name).includes(query) ||
-          norm(team.project.details).includes(query);
+        const inProject = norm(team.project.name).includes(query) || norm(team.project.details).includes(query);
         const inMembers = (team.members ?? []).some(
-          (member) =>
-            norm(member.name).includes(query) ||
-            norm(member.email).includes(query),
+          (member) => norm(member.name).includes(query) || norm(member.email).includes(query),
         );
         return inTeam || inTrack || inProject || inMembers;
       })
-      .filter((team) =>
-        statusFilter === "All" ? true : team.status === statusFilter,
-      )
-      .filter((team) =>
-        trackFilter === "All" ? true : team.track === trackFilter,
-      );
+      .filter((team) => (statusFilter === "All" ? true : team.status === statusFilter))
+      .filter((team) => (trackFilter === "All" ? true : team.track === trackFilter));
   }, [teams, search, statusFilter, trackFilter]);
 
   const memberTeamByUserId = useMemo(() => {
@@ -118,31 +105,22 @@ export default function TeamsAdminPage() {
 
     return availableUsers.filter((user) => {
       const currentTeam = memberTeamByUserId.get(user.id) ?? "Unassigned";
-      return (
-        norm(user.name).includes(query) ||
-        norm(user.email).includes(query) ||
-        norm(currentTeam).includes(query)
-      );
+      return norm(user.name).includes(query) || norm(user.email).includes(query) || norm(currentTeam).includes(query);
     });
   }, [availableUsers, memberSearch, memberTeamByUserId]);
 
   const filteredTeamUsers = useMemo(
-    () =>
-      filteredAllUsers.filter((user) => selectedMemberIds.includes(user.id)),
+    () => filteredAllUsers.filter((user) => selectedMemberIds.includes(user.id)),
     [filteredAllUsers, selectedMemberIds],
   );
 
   const activeLeader = useMemo(() => {
     if (!activeTeam?.leaderId) return null;
-    return (
-      (activeTeam.members ?? []).find((member) => member.id === activeTeam.leaderId) ??
-      null
-    );
+    return (activeTeam.members ?? []).find((member) => member.id === activeTeam.leaderId) ?? null;
   }, [activeTeam]);
 
   const filteredNonTeamUsers = useMemo(
-    () =>
-      filteredAllUsers.filter((user) => !memberTeamByUserId.has(user.id)),
+    () => filteredAllUsers.filter((user) => !memberTeamByUserId.has(user.id)),
     [filteredAllUsers, memberTeamByUserId],
   );
 
@@ -212,9 +190,7 @@ export default function TeamsAdminPage() {
 
   function applyUpdatedTeam(updated: Team) {
     const normalized = normalizeTeam(updated);
-    setTeams((current) =>
-      current.map((team) => (team.id === normalized.id ? normalized : team)),
-    );
+    setTeams((current) => current.map((team) => (team.id === normalized.id ? normalized : team)));
     setDraftTeamName(normalized.teamName);
     setDraftStatus(normalized.status);
     setDraftTrack(normalized.track);
@@ -283,19 +259,15 @@ export default function TeamsAdminPage() {
     setSavingMembers(true);
     setError(null);
     try {
-      const updated = await api.patch<Team>(
-        `/admin/teams/${activeTeam.id}/members`,
-        {
-          memberIds,
-        },
-      );
+      const updated = await api.patch<Team>(`/admin/teams/${activeTeam.id}/members`, {
+        memberIds,
+      });
       applyUpdatedTeam(updated);
     } catch (err: unknown) {
       console.error(err);
       const apiMessage =
         typeof err === "object" && err !== null && "response" in err
-          ? (err as { response?: { data?: { message?: string } } }).response
-              ?.data?.message
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : null;
       setError(apiMessage ?? "Could not update team members.");
     } finally {
@@ -316,9 +288,7 @@ export default function TeamsAdminPage() {
   function toggleJudge(roundId: string, judgeId: number) {
     setDraftAssignments((current) => {
       const selected = current[roundId] ?? [];
-      const next = selected.includes(judgeId)
-        ? selected.filter((id) => id !== judgeId)
-        : [...selected, judgeId];
+      const next = selected.includes(judgeId) ? selected.filter((id) => id !== judgeId) : [...selected, judgeId];
       return { ...current, [roundId]: next };
     });
   }
@@ -330,9 +300,7 @@ export default function TeamsAdminPage() {
       return;
     }
 
-    const judge = judges.find(
-      (item) => norm(item.name) === query || norm(item.email) === query,
-    );
+    const judge = judges.find((item) => norm(item.name) === query || norm(item.email) === query);
 
     if (!judge) {
       setError("Judge not found. Use the judge name or email.");
@@ -376,9 +344,7 @@ export default function TeamsAdminPage() {
     <div className={`${styles.card} text-(--sub-text)`}>
       <div className="mb-4">
         <h2 className={styles.primaryTitle}>Teams</h2>
-        <p className="mt-1 text-sm text-(--sub-text)">
-          Edit team info, projects, members, and judge assignments.
-        </p>
+        <p className="mt-1 text-sm text-(--sub-text)">Edit team info, projects, members, and judge assignments.</p>
       </div>
 
       <div className={styles.card}>
@@ -392,11 +358,8 @@ export default function TeamsAdminPage() {
 
           <select
             value={statusFilter}
-            onChange={(event) =>
-              setStatusFilter(event.target.value as TeamStatusFilter)
-            }
-            className="rounded-xl border border-[#FEA70A]/60 bg-[#111435] px-3 py-2 text-sm outline-none"
-          >
+            onChange={(event) => setStatusFilter(event.target.value as TeamStatusFilter)}
+            className="rounded-xl border border-[#FEA70A]/60 bg-[#111435] px-3 py-2 text-sm outline-none">
             <option value="All">All Status</option>
             <option value="Unverified">Unverified</option>
             <option value="Verified">Verified</option>
@@ -404,20 +367,14 @@ export default function TeamsAdminPage() {
 
           <select
             value={trackFilter}
-            onChange={(event) =>
-              setTrackFilter(event.target.value as TrackFilter)
-            }
-            className="rounded-xl border border-[#FEA70A]/60 bg-[#111435] px-3 py-2 text-sm outline-none"
-          >
+            onChange={(event) => setTrackFilter(event.target.value as TrackFilter)}
+            className="rounded-xl border border-[#FEA70A]/60 bg-[#111435] px-3 py-2 text-sm outline-none">
             <option value="All">All Tracks</option>
             <option value="Software">Software</option>
             <option value="Hardware">Hardware</option>
           </select>
 
-          <button
-            onClick={() => void loadData()}
-            className={`${styles.secondaryButton} text-xs`}
-          >
+          <button onClick={() => void loadData()} className={`${styles.secondaryButton} text-xs`}>
             Refresh
           </button>
         </div>
@@ -446,10 +403,7 @@ export default function TeamsAdminPage() {
             <tbody>
               {!loading &&
                 filteredTeams.map((team) => (
-                  <tr
-                    key={team.id}
-                    className="border-b border-white/10 last:border-b-0"
-                  >
+                  <tr key={team.id} className="border-b border-white/10 last:border-b-0">
                     <td className="py-3">
                       <div className="font-medium">{team.teamName}</div>
                     </td>
@@ -460,18 +414,14 @@ export default function TeamsAdminPage() {
                           team.status === "Verified"
                             ? "border-green-400/30 bg-green-500/10 text-(--sub-text)"
                             : "border-white/10 bg-white/5 text-(--sub-text)"
-                        }`}
-                      >
+                        }`}>
                         {team.status}
                       </span>
                     </td>
                     <td className="py-3">{team.project.name || "—"}</td>
                     <td className="py-3">{(team.members ?? []).length}</td>
                     <td className="py-3 text-right">
-                      <button
-                        onClick={() => openEditor(team)}
-                        className={`${styles.primaryButton} text-xs`}
-                      >
+                      <button onClick={() => openEditor(team)} className={`${styles.primaryButton} text-xs`}>
                         Edit
                       </button>
                     </td>
@@ -480,10 +430,7 @@ export default function TeamsAdminPage() {
 
               {loading && (
                 <tr>
-                  <td
-                    className="py-8 text-center text-(--sub-text)"
-                    colSpan={6}
-                  >
+                  <td className="py-8 text-center text-(--sub-text)" colSpan={6}>
                     Loading teams...
                   </td>
                 </tr>
@@ -491,10 +438,7 @@ export default function TeamsAdminPage() {
 
               {!loading && filteredTeams.length === 0 && (
                 <tr>
-                  <td
-                    className="py-8 text-center text-(--sub-text)"
-                    colSpan={6}
-                  >
+                  <td className="py-8 text-center text-(--sub-text)" colSpan={6}>
                     No matching teams.
                   </td>
                 </tr>
@@ -505,33 +449,24 @@ export default function TeamsAdminPage() {
       </div>
 
       {activeTeam && (
-        <div
-          className={`${styles.modalBackdrop} fixed inset-0 z-50 bg-black/50`}
-          onMouseDown={closeEditor}
-        >
+        <div className={`${styles.modalBackdrop} fixed inset-0 z-50 bg-black/50`} onMouseDown={closeEditor}>
           <div
             className={`${styles.cardModal} max-h-[90vh] w-[min(620px,95vw)] overflow-y-auto shadow-xl`}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
+            onMouseDown={(event) => event.stopPropagation()}>
             <div className="mb-4 flex items-start justify-between gap-4">
               <div>
                 <div className="text-lg font-semibold">Edit Team</div>
-                <div className="mt-1 text-sm text-(--sub-text)">
-                  {activeTeam.teamName}
-                </div>
+                <div className="mt-1 text-sm text-(--sub-text)">{activeTeam.teamName}</div>
               </div>
               <button
                 onClick={closeEditor}
-                className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs hover:opacity-80"
-              >
+                className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs hover:opacity-80">
                 ✕
               </button>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-black/10 p-4">
-              <div className="mb-3 text-sm font-semibold text-(--sub-text)">
-                Team Info
-              </div>
+              <div className="mb-3 text-sm font-semibold text-(--sub-text)">Team Info</div>
               <label className="text-xs text-(--sub-text)">Team Name</label>
               <input
                 value={draftTeamName}
@@ -540,19 +475,14 @@ export default function TeamsAdminPage() {
                 placeholder="Team name"
                 maxLength={TEAM_NAME_MAX_LENGTH}
               />
-              <div className="mt-1 text-xs text-(--sub-text)">
-                Max {TEAM_NAME_MAX_LENGTH} characters
-              </div>
+              <div className="mt-1 text-xs text-(--sub-text)">Max {TEAM_NAME_MAX_LENGTH} characters</div>
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
                   <label className="text-xs text-(--sub-text)">Track</label>
                   <select
                     value={draftTrack}
-                    onChange={(event) =>
-                      setDraftTrack(event.target.value as Track)
-                    }
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none"
-                  >
+                    onChange={(event) => setDraftTrack(event.target.value as Track)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none">
                     <option value="Software">Software</option>
                     <option value="Hardware">Hardware</option>
                   </select>
@@ -561,11 +491,8 @@ export default function TeamsAdminPage() {
                   <label className="text-xs text-(--sub-text)">Status</label>
                   <select
                     value={draftStatus}
-                    onChange={(event) =>
-                      setDraftStatus(event.target.value as TeamStatus)
-                    }
-                    className="mt-1 w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none"
-                  >
+                    onChange={(event) => setDraftStatus(event.target.value as TeamStatus)}
+                    className="mt-1 w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none">
                     <option value="Unverified">Unverified</option>
                     <option value="Verified">Verified</option>
                   </select>
@@ -575,17 +502,14 @@ export default function TeamsAdminPage() {
                 <button
                   onClick={() => void saveTeamInfo()}
                   disabled={savingTeamInfo}
-                  className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}
-                >
+                  className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}>
                   {savingTeamInfo ? "Saving..." : "Save Team Info"}
                 </button>
               </div>
             </div>
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
-              <div className="mb-3 text-sm font-semibold text-(--sub-text)">
-                Project
-              </div>
+              <div className="mb-3 text-sm font-semibold text-(--sub-text)">Project</div>
               <label className="text-xs text-(--sub-text)">Project Name</label>
               <input
                 value={draftProjectName}
@@ -593,9 +517,7 @@ export default function TeamsAdminPage() {
                 className={`${styles.inputContainer} mt-1 mb-0 w-full`}
                 placeholder="Project name"
               />
-              <label className="mt-3 block text-xs text-(--sub-text)">
-                Project Details
-              </label>
+              <label className="mt-3 block text-xs text-(--sub-text)">Project Details</label>
               <textarea
                 value={draftProjectDetails}
                 onChange={(event) => setDraftProjectDetails(event.target.value)}
@@ -604,15 +526,12 @@ export default function TeamsAdminPage() {
                 placeholder="Project description"
                 maxLength={PROJECT_DETAILS_MAX_LENGTH}
               />
-              <div className="mt-1 text-xs text-(--sub-text)">
-                Max {PROJECT_DETAILS_MAX_LENGTH} characters
-              </div>
+              <div className="mt-1 text-xs text-(--sub-text)">Max {PROJECT_DETAILS_MAX_LENGTH} characters</div>
               <div className="mt-3 flex justify-end">
                 <button
                   onClick={() => void saveProjectInfo()}
                   disabled={savingProject}
-                  className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}
-                >
+                  className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}>
                   {savingProject ? "Saving..." : "Save Project"}
                 </button>
               </div>
@@ -620,9 +539,7 @@ export default function TeamsAdminPage() {
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <div className="text-sm font-semibold text-(--sub-text)">
-                  Members
-                </div>
+                <div className="text-sm font-semibold text-(--sub-text)">Members</div>
                 <div className="text-xs text-(--sub-text)">
                   {selectedMemberIds.length}/{TEAM_MEMBER_LIMIT} in team
                   {savingMembers ? " • Updating..." : ""}
@@ -648,35 +565,23 @@ export default function TeamsAdminPage() {
                   <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
                     {filteredNonTeamUsers.map((user) => {
                       const currentTeam = memberTeamByUserId.get(user.id);
-                      const canAdd =
-                        !currentTeam ||
-                        (activeTeam != null &&
-                          currentTeam === activeTeam.teamName);
+                      const canAdd = !currentTeam || (activeTeam != null && currentTeam === activeTeam.teamName);
 
                       return (
                         <div
                           key={`all-${user.id}`}
-                          className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3"
-                        >
+                          className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3">
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold">
-                              {user.name}
-                            </div>
+                            <div className="truncate text-sm font-semibold">{user.name}</div>
                             <div className="truncate text-xs text-(--sub-text)">
-                              {user.email} • {user.track} • Team:{" "}
-                              {currentTeam ?? "Unassigned"}
+                              {user.email} • {user.track} • Team: {currentTeam ?? "Unassigned"}
                             </div>
                           </div>
                           <button
                             type="button"
                             onClick={() => onAddMember(user.id)}
-                            disabled={
-                              savingMembers ||
-                              selectedMemberIds.length >= TEAM_MEMBER_LIMIT ||
-                              !canAdd
-                            }
-                            className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}
-                          >
+                            disabled={savingMembers || selectedMemberIds.length >= TEAM_MEMBER_LIMIT || !canAdd}
+                            className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}>
                             {canAdd ? "Add" : "On Another Team"}
                           </button>
                         </div>
@@ -699,13 +604,10 @@ export default function TeamsAdminPage() {
                     {filteredTeamUsers.map((user) => (
                       <div
                         key={`team-${user.id}`}
-                        className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3"
-                      >
+                        className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-black/10 p-3">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <div className="truncate text-sm font-semibold">
-                              {user.name}
-                            </div>
+                            <div className="truncate text-sm font-semibold">{user.name}</div>
                             {activeTeam?.leaderId === user.id && (
                               <span className="rounded-full border border-[#FEA70A]/40 bg-[#FEA70A]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-(--sub-text)">
                                 Leader
@@ -720,8 +622,7 @@ export default function TeamsAdminPage() {
                           type="button"
                           className={`${styles.warnButton} text-xs`}
                           onClick={() => onRemoveMember(user.id)}
-                          disabled={savingMembers}
-                        >
+                          disabled={savingMembers}>
                           Remove
                         </button>
                       </div>
@@ -738,15 +639,12 @@ export default function TeamsAdminPage() {
             </div>
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
-              <div className="mb-2 text-sm font-semibold text-(--sub-text)">
-                Judge Assignments
-              </div>
+              <div className="mb-2 text-sm font-semibold text-(--sub-text)">Judge Assignments</div>
               <div className="mb-3 grid grid-cols-1 gap-2 md:grid-cols-3">
                 <select
                   value={assignmentRound}
                   onChange={(event) => setAssignmentRound(event.target.value)}
-                  className="w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none"
-                >
+                  className="w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none">
                   {displayRounds.map((round) => (
                     <option key={round.id} value={round.id}>
                       {round.name}
@@ -755,16 +653,11 @@ export default function TeamsAdminPage() {
                 </select>
                 <input
                   value={assignmentJudgeText}
-                  onChange={(event) =>
-                    setAssignmentJudgeText(event.target.value)
-                  }
+                  onChange={(event) => setAssignmentJudgeText(event.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none"
                   placeholder="Type judge name or email..."
                 />
-                <button
-                  onClick={addJudgeToRound}
-                  className={`${styles.primaryButton} text-xs whitespace-nowrap`}
-                >
+                <button onClick={addJudgeToRound} className={`${styles.primaryButton} text-xs whitespace-nowrap`}>
                   Add Judge To Round
                 </button>
               </div>
@@ -772,10 +665,7 @@ export default function TeamsAdminPage() {
                 {displayRounds.map((round) => {
                   const selected = draftAssignments[round.id] ?? [];
                   return (
-                    <details
-                      key={round.id}
-                      className="rounded-xl border border-white/10 bg-white/5"
-                    >
+                    <details key={round.id} className="rounded-xl border border-white/10 bg-white/5">
                       <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm font-semibold hover:bg-white/10">
                         <span>{round.name}</span>
                         <span className="text-xs font-normal text-(--sub-text)">
@@ -791,8 +681,7 @@ export default function TeamsAdminPage() {
                           {judges.map((judge) => (
                             <label
                               key={judge.id}
-                              className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1 text-xs hover:bg-white/10"
-                            >
+                              className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1 text-xs hover:bg-white/10">
                               <input
                                 type="checkbox"
                                 checked={selected.includes(judge.id)}
@@ -801,9 +690,7 @@ export default function TeamsAdminPage() {
                               />
                               <span className="truncate font-medium">
                                 {judge.name}
-                                <span className="ml-1 font-normal text-(--sub-text)">
-                                  ({judge.email})
-                                </span>
+                                <span className="ml-1 font-normal text-(--sub-text)">({judge.email})</span>
                               </span>
                             </label>
                           ))}
@@ -818,8 +705,7 @@ export default function TeamsAdminPage() {
                 <button
                   onClick={() => void saveAssignments()}
                   disabled={savingAssignments}
-                  className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}
-                >
+                  className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}>
                   {savingAssignments ? "Saving..." : "Save Assignments"}
                 </button>
               </div>

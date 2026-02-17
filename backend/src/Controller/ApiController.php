@@ -19,6 +19,7 @@ class ApiController extends AbstractController
 {
     private const TEAM_MEMBER_LIMIT = 5;
     private const TEAM_NAME_MAX_LENGTH = 48;
+    private const PROJECT_NAME_MAX_LENGTH = 100;
     private const PROJECT_DETAILS_MAX_LENGTH = 250;
 
     #[Route('/login', name: 'login', methods: ['POST'])]
@@ -499,6 +500,9 @@ public function uploadFile(
 
         if (array_key_exists('projectName', $data)) {
             $projectName = trim((string) $data['projectName']);
+            if (mb_strlen($projectName) > self::PROJECT_NAME_MAX_LENGTH) {
+                return $this->json(['message' => 'Project name must be ' . self::PROJECT_NAME_MAX_LENGTH . ' characters or fewer'], 400);
+            }
             $team->setProjectName($projectName !== '' ? $projectName : null);
         }
 

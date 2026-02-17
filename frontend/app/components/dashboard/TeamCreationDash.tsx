@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import { useState } from "react";
 import style from "../../dashboard/dashboard.module.css";
 import api from "@/lib/api";
 import { useTeamContext } from "./TeamContext";
-import type {CreateTeamRequest, Track, Team} from "@/lib/types";
+import type { CreateTeamRequest, Track, Team } from "@/lib/types";
 
 const TEAM_NAME_MAX_LENGTH = 48;
 
 export function TeamCreationDash() {
   const { refresh } = useTeamContext();
-  const [teamName, setTeamName] = useState('');
-  const [track, setTrack] = useState<Track>('Software');
+  const [teamName, setTeamName] = useState("");
+  const [track, setTrack] = useState<Track>("Software");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [createdTeam, setCreatedTeam] = useState<Team | null>(null);
 
@@ -19,7 +19,7 @@ export function TeamCreationDash() {
     const trimmedTeamName = teamName.trim();
 
     if (!trimmedTeamName) {
-      setError('Team name is required');
+      setError("Team name is required");
       return;
     }
 
@@ -29,28 +29,28 @@ export function TeamCreationDash() {
     }
 
     setLoading(true);
-    setError('');
+    setError("");
     setSuccess(false);
     setCreatedTeam(null);
 
     const requestData: CreateTeamRequest = {
       teamName: trimmedTeamName,
-      track
+      track,
     };
 
     try {
-      const response = await api.post<Team>('/teams', requestData);
+      const response = await api.post<Team>("/teams", requestData);
       setCreatedTeam(response);
       setSuccess(true);
-      setTeamName('');
-      setTrack('Software');
+      setTeamName("");
+      setTrack("Software");
       await refresh();
     } catch (err: unknown) {
       const apiMessage =
         typeof err === "object" && err !== null && "response" in err
           ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
           : null;
-      setError(apiMessage || 'Failed to create team');
+      setError(apiMessage || "Failed to create team");
     } finally {
       setLoading(false);
     }
@@ -73,9 +73,7 @@ export function TeamCreationDash() {
                 disabled={loading}
                 maxLength={TEAM_NAME_MAX_LENGTH}
               />
-              <p className="text-xs text-(--sub-text)">
-                Max {TEAM_NAME_MAX_LENGTH} characters
-              </p>
+              <p className="text-xs text-(--sub-text)">Max {TEAM_NAME_MAX_LENGTH} characters</p>
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-xs text-gray-500 tracking-wider">TRACK</label>
@@ -83,8 +81,7 @@ export function TeamCreationDash() {
                 className={style.dropdown}
                 value={track}
                 onChange={(e) => setTrack(e.target.value as Track)}
-                disabled={loading}
-              >
+                disabled={loading}>
                 <option value="Software">Software</option>
                 <option value="Hardware">Hardware</option>
               </select>
@@ -99,12 +96,8 @@ export function TeamCreationDash() {
                 <p className="text-gray-400 text-xs">Status: {createdTeam.status}</p>
               </div>
             )}
-            <button 
-              onClick={createTeam}
-              disabled={loading}
-              className={style.primaryButton}
-            >
-              {loading ? 'Creating...' : 'Create Team'}
+            <button onClick={createTeam} disabled={loading} className={style.primaryButton}>
+              {loading ? "Creating..." : "Create Team"}
             </button>
           </div>
         </div>
@@ -120,8 +113,6 @@ export function TeamCreationDash() {
           </ul>
         </div>
       </div>
-
-      
     </>
   );
 }
