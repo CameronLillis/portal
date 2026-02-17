@@ -2,7 +2,9 @@ import { useState } from 'react';
 import style from "../../dashboard/dashboard.module.css";
 import api from "@/lib/api";
 import { useTeamContext } from "./TeamContext";
-import type {ErrorResponse, CreateTeamRequest, Track, Team} from "@/lib/types";
+import type {CreateTeamRequest, Track, Team} from "@/lib/types";
+
+const TEAM_NAME_MAX_LENGTH = 48;
 
 export function TeamCreationDash() {
   const { refresh } = useTeamContext();
@@ -14,8 +16,15 @@ export function TeamCreationDash() {
   const [createdTeam, setCreatedTeam] = useState<Team | null>(null);
 
   const createTeam = async () => {
-    if (!teamName.trim()) {
+    const trimmedTeamName = teamName.trim();
+
+    if (!trimmedTeamName) {
       setError('Team name is required');
+      return;
+    }
+
+    if (trimmedTeamName.length > TEAM_NAME_MAX_LENGTH) {
+      setError(`Team name must be ${TEAM_NAME_MAX_LENGTH} characters or fewer`);
       return;
     }
 
@@ -25,7 +34,7 @@ export function TeamCreationDash() {
     setCreatedTeam(null);
 
     const requestData: CreateTeamRequest = {
-      teamName: teamName.trim(),
+      teamName: trimmedTeamName,
       track
     };
 
@@ -36,8 +45,12 @@ export function TeamCreationDash() {
       setTeamName('');
       setTrack('Software');
       await refresh();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create team');
+    } catch (err: unknown) {
+      const apiMessage =
+        typeof err === "object" && err !== null && "response" in err
+          ? (err as { response?: { data?: { message?: string } } }).response?.data?.message
+          : null;
+      setError(apiMessage || 'Failed to create team');
     } finally {
       setLoading(false);
     }
@@ -58,7 +71,11 @@ export function TeamCreationDash() {
                 onChange={(e) => setTeamName(e.target.value)}
                 placeholder="Enter team name..."
                 disabled={loading}
+                maxLength={TEAM_NAME_MAX_LENGTH}
               />
+              <p className="text-xs text-(--sub-text)">
+                Max {TEAM_NAME_MAX_LENGTH} characters
+              </p>
             </div>
             <div className="flex flex-col gap-2">
               <label className="text-xs text-gray-500 tracking-wider">TRACK</label>
@@ -96,6 +113,7 @@ export function TeamCreationDash() {
           <h4 className={style.secondaryTitle}>Team Guidelines</h4>
           <ul className={`${style.list} space-y-2`}>
             <li>Names must be professional.</li>
+            <li>Team name max is {TEAM_NAME_MAX_LENGTH} characters.</li>
             <li>Teams are limited to 5 members.</li>
             <li>Tracks must be either Software or Hardware.</li>
             <li>After creation, make a project.</li>

@@ -17,6 +17,10 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 #[Route('/api', name: 'api_')]
 class ApiController extends AbstractController
 {
+    private const TEAM_MEMBER_LIMIT = 5;
+    private const TEAM_NAME_MAX_LENGTH = 48;
+    private const PROJECT_DETAILS_MAX_LENGTH = 250;
+
     #[Route('/login', name: 'login', methods: ['POST'])]
     public function login()
     {
@@ -349,7 +353,10 @@ public function uploadFile(
         if ($teamName === '') {
             return $this->json(['message' => 'Team name is required'], 400);
         }
-    
+        if (mb_strlen($teamName) > self::TEAM_NAME_MAX_LENGTH) {
+            return $this->json(['message' => 'Team name must be ' . self::TEAM_NAME_MAX_LENGTH . ' characters or fewer'], 400);
+        }
+
         $existing = $em->getRepository(Team::class)->findOneBy(['name' => $teamName]);
         if ($existing) {
             return $this->json(['message' => 'Team name already exists'], 409);
@@ -452,6 +459,9 @@ public function uploadFile(
             if ($newTeamName === '') {
                 return $this->json(['message' => 'Team name cannot be empty'], 400);
             }
+            if (mb_strlen($newTeamName) > self::TEAM_NAME_MAX_LENGTH) {
+                return $this->json(['message' => 'Team name must be ' . self::TEAM_NAME_MAX_LENGTH . ' characters or fewer'], 400);
+            }
 
             if ($newTeamName !== $currentName) {
                 $existing = $em->getRepository(Team::class)->findOneBy(['name' => $newTeamName]);
@@ -494,6 +504,9 @@ public function uploadFile(
 
         if (array_key_exists('projectDetails', $data)) {
             $projectDetails = trim((string) $data['projectDetails']);
+            if (mb_strlen($projectDetails) > self::PROJECT_DETAILS_MAX_LENGTH) {
+                return $this->json(['message' => 'Project details must be ' . self::PROJECT_DETAILS_MAX_LENGTH . ' characters or fewer'], 400);
+            }
             $team->setProjectDetails($projectDetails !== '' ? $projectDetails : null);
         }
 
@@ -569,8 +582,8 @@ public function uploadFile(
         }
 
         $memberIds = array_values(array_unique(array_map('intval', $memberIds)));
-        if (count($memberIds) > 5) {
-            return $this->json(['message' => 'A team can only have up to 5 members'], 400);
+        if (count($memberIds) > self::TEAM_MEMBER_LIMIT) {
+            return $this->json(['message' => 'A team can only have up to ' . self::TEAM_MEMBER_LIMIT . ' members'], 400);
         }
 
         $selectedUsers = [];
@@ -785,7 +798,7 @@ public function uploadFile(
         // Check team capacity
         $currentMembers = $em->getRepository(User::class)->findBy(['team' => $userTeamName]);
         $pendingInvites = $em->getRepository(Invitation::class)->findBy(['team' => $team, 'status' => 'pending']);
-        if (count($currentMembers) + count($pendingInvites) >= 5) {
+        if (count($currentMembers) + count($pendingInvites) >= self::TEAM_MEMBER_LIMIT) {
             return $this->json(['message' => 'Team is at capacity (including pending invitations)'], 400);
         }
 
@@ -894,7 +907,7 @@ public function uploadFile(
 
         // Check team capacity
         $currentMembers = $em->getRepository(User::class)->findBy(['team' => $teamName]);
-        if (count($currentMembers) >= 5) {
+        if (count($currentMembers) >= self::TEAM_MEMBER_LIMIT) {
             return $this->json(['message' => 'Team is already at maximum capacity'], 400);
         }
 

@@ -22,6 +22,9 @@ const ROUNDS: Round[] = [
   { id: "r6", name: "Round 6" },
   { id: "r7", name: "Round 7" },
 ];
+const TEAM_MEMBER_LIMIT = 5;
+const TEAM_NAME_MAX_LENGTH = 48;
+const PROJECT_DETAILS_MAX_LENGTH = 250;
 
 function norm(value: string): string {
   return value.trim().toLowerCase();
@@ -229,6 +232,10 @@ export default function TeamsAdminPage() {
       setError("Team name cannot be empty.");
       return;
     }
+    if (teamName.length > TEAM_NAME_MAX_LENGTH) {
+      setError(`Team name must be ${TEAM_NAME_MAX_LENGTH} characters or fewer.`);
+      return;
+    }
 
     setSavingTeamInfo(true);
     setError(null);
@@ -268,8 +275,8 @@ export default function TeamsAdminPage() {
 
   async function updateMembers(memberIds: number[]) {
     if (!activeTeam) return;
-    if (memberIds.length > 5) {
-      setError("A team can only have up to 5 members.");
+    if (memberIds.length > TEAM_MEMBER_LIMIT) {
+      setError(`A team can only have up to ${TEAM_MEMBER_LIMIT} members.`);
       return;
     }
 
@@ -531,7 +538,11 @@ export default function TeamsAdminPage() {
                 onChange={(event) => setDraftTeamName(event.target.value)}
                 className={`${styles.inputContainer} mt-1 mb-0 w-full`}
                 placeholder="Team name"
+                maxLength={TEAM_NAME_MAX_LENGTH}
               />
+              <div className="mt-1 text-xs text-(--sub-text)">
+                Max {TEAM_NAME_MAX_LENGTH} characters
+              </div>
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
                   <label className="text-xs text-(--sub-text)">Track</label>
@@ -591,7 +602,11 @@ export default function TeamsAdminPage() {
                 className={`${styles.inputContainer} mt-1 mb-0 w-full resize-y`}
                 rows={4}
                 placeholder="Project description"
+                maxLength={PROJECT_DETAILS_MAX_LENGTH}
               />
+              <div className="mt-1 text-xs text-(--sub-text)">
+                Max {PROJECT_DETAILS_MAX_LENGTH} characters
+              </div>
               <div className="mt-3 flex justify-end">
                 <button
                   onClick={() => void saveProjectInfo()}
@@ -609,7 +624,7 @@ export default function TeamsAdminPage() {
                   Members
                 </div>
                 <div className="text-xs text-(--sub-text)">
-                  {selectedMemberIds.length}/5 in team
+                  {selectedMemberIds.length}/{TEAM_MEMBER_LIMIT} in team
                   {savingMembers ? " • Updating..." : ""}
                 </div>
               </div>
@@ -657,7 +672,7 @@ export default function TeamsAdminPage() {
                             onClick={() => onAddMember(user.id)}
                             disabled={
                               savingMembers ||
-                              selectedMemberIds.length >= 5 ||
+                              selectedMemberIds.length >= TEAM_MEMBER_LIMIT ||
                               !canAdd
                             }
                             className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}
