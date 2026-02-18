@@ -43,7 +43,7 @@ class TeamFixtures extends Fixture
 
         foreach ($teams as $item) {
             $team = (new Team())
-                ->setTeamName($item['name'])
+                ->setName($item['name'])
                 ->setStatus($item['status'])
                 ->setTrack($item['track'])
                 ->setProjectName($item['project_name'])

@@ -31,7 +31,7 @@ class Team
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $project_details = null;
 
-    #[ORM\Column(type: Types::JSON, nullable: true)]
+    #[ORM\Column(type: Types::JSON, nullable: true)] // dont do this 
     private ?array $judge_assignments = [];
 
     public function getId(): ?int
@@ -40,12 +40,12 @@ class Team
     }
 
 
-    public function getTeamName(): ?string
+    public function getName(): ?string
     {
         return $this->name;
     }
 
-    public function setTeamName(string $name): static
+    public function setName(string $name): static
     {
         $this->name = $name;
 

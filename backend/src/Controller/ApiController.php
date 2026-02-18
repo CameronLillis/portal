@@ -365,7 +365,7 @@ public function uploadFile(
     
         // 2. Create the Team Entity
         $team = new Team();
-        $team->setTeamName($teamName);
+        $team->setName($teamName);
         $team->setStatus('Unverified');
         $team->setTrack($data['track'] ?? 'Software');
         
@@ -429,8 +429,8 @@ public function uploadFile(
 
         $json_data = array_map(fn(Team $t) => $this->serializeTeam(
             $t,
-            $membersByTeam[$t->getTeamName() ?? ''] ?? [],
-            $leaderByTeam[$t->getTeamName() ?? ''] ?? null
+            $membersByTeam[$t->getName() ?? ''] ?? [],
+            $leaderByTeam[$t->getName() ?? ''] ?? null
         ), $teams);
 
         return $this->json($json_data);
@@ -450,7 +450,7 @@ public function uploadFile(
         }
 
         $data = json_decode($request->getContent(), true) ?? [];
-        $currentName = $team->getTeamName();
+        $currentName = $team->getName();
         if (!$currentName) {
             return $this->json(['message' => 'Team has no current name'], 400);
         }
@@ -475,7 +475,7 @@ public function uploadFile(
                     $member->setTeam($newTeamName);
                 }
 
-                $team->setTeamName($newTeamName);
+                $team->setName($newTeamName);
                 $currentName = $newTeamName;
             }
         }
@@ -598,7 +598,7 @@ public function uploadFile(
             }
         }
 
-        $teamName = $team->getTeamName();
+        $teamName = $team->getName();
         if (!$teamName) {
             return $this->json(['message' => 'Team has no name and cannot be assigned'], 400);
         }
@@ -700,7 +700,7 @@ public function uploadFile(
             return $this->json(['message' => 'Team not found'], 404);
         }
 
-        $teamName = $team->getTeamName();
+        $teamName = $team->getName();
         if ($teamName === null) {
             return $this->json(['message' => 'Team has no name'], 400);
         }
@@ -772,7 +772,7 @@ public function uploadFile(
             $teams = $em->getRepository(Team::class)->findAll();
             $userTeam = null;
             foreach ($teams as $t) {
-                $members = $em->getRepository(User::class)->findBy(['team' => $t->getTeamName()]);
+                $members = $em->getRepository(User::class)->findBy(['team' => $t->getName()]);
                 foreach ($members as $m) {
                     if ($m->getId() === $user->getId()) {
                         $userTeam = $t;
@@ -783,7 +783,7 @@ public function uploadFile(
             if (!$userTeam) {
                 return $this->json(['message' => 'You must be in a team to invite'], 400);
             }
-            $leaderId = $this->findTeamLeaderId($em, $userTeam->getTeamName());
+            $leaderId = $this->findTeamLeaderId($em, $userTeam->getName());
             if ($leaderId !== $user->getId()) {
                 return $this->json(['message' => 'Only the team leader can send invitations'], 403);
             }
@@ -870,7 +870,7 @@ public function uploadFile(
         }
 
         // Check if user is a member of this team
-        if ($user->getTeam() !== $team->getTeamName()) {
+        if ($user->getTeam() !== $team->getName()) {
             return $this->json(['message' => 'Access denied'], 403);
         }
 
@@ -907,7 +907,7 @@ public function uploadFile(
         }
 
         $team = $invitation->getTeam();
-        $teamName = $team->getTeamName();
+        $teamName = $team->getName();
 
         // Check team capacity
         $currentMembers = $em->getRepository(User::class)->findBy(['team' => $teamName]);
@@ -972,7 +972,7 @@ public function uploadFile(
         return [
             'id' => $invitation->getId(),
             'teamId' => $team->getId(),
-            'teamName' => $team->getTeamName(),
+            'teamName' => $team->getName(),
             'status' => $invitation->getStatus(),
         ];
     }
@@ -984,7 +984,7 @@ public function uploadFile(
         return [
             'id' => $invitation->getId(),
             'teamId' => $team->getId(),
-            'teamName' => $team->getTeamName(),
+            'teamName' => $team->getName(),
             'status' => $invitation->getStatus(),
             'invitee' => [
                 'id' => $invitee->getId(),
@@ -1014,7 +1014,7 @@ public function uploadFile(
     {
         return [
             'id' => $team->getId(),
-            'teamName' => $team->getTeamName(),
+            'teamName' => $team->getName(),
             'status' => $team->getStatus() ?? 'Unverified',
             'track' => $team->getTrack() ?? 'Software',
             'project' => [
