@@ -2,26 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import api from "@/lib/api";
+import { CONFIGURED_ROUNDS, labelForRoundId } from "@/lib/rounds";
 import type { Judge, Team, TeamStatus, Track, User } from "@/lib/types";
 import styles from "../../dashboard-admin/admin.module.css";
 
 type TeamStatusFilter = "All" | TeamStatus;
 type TrackFilter = "All" | Track;
 
-type Round = {
-  id: string;
-  name: string;
-};
-
-const ROUNDS: Round[] = [
-  { id: "r1", name: "Round 1" },
-  { id: "r2", name: "Round 2" },
-  { id: "r3", name: "Round 3" },
-  { id: "r4", name: "Round 4" },
-  { id: "r5", name: "Round 5" },
-  { id: "r6", name: "Round 6" },
-  { id: "r7", name: "Round 7" },
-];
 const TEAM_MEMBER_LIMIT = 5;
 const TEAM_NAME_MAX_LENGTH = 48;
 const PROJECT_DETAILS_MAX_LENGTH = 250;
@@ -62,8 +49,9 @@ export default function TeamsAdminPage() {
   const [draftProjectName, setDraftProjectName] = useState("");
   const [draftProjectDetails, setDraftProjectDetails] = useState("");
   const [draftAssignments, setDraftAssignments] = useState<Record<string, number[]>>({});
-  const [assignmentRound, setAssignmentRound] = useState<string>(ROUNDS[0].id);
-  const [assignmentJudgeText, setAssignmentJudgeText] = useState<string>("");
+  const [assignmentRound, setAssignmentRound] = useState<string>(CONFIGURED_ROUNDS[0].id);
+  const [assignmentJudgeId, setAssignmentJudgeId] = useState<string>("");
+  const [assignmentJudgeSearch, setAssignmentJudgeSearch] = useState<string>("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
 
@@ -124,18 +112,56 @@ export default function TeamsAdminPage() {
     [filteredAllUsers, memberTeamByUserId],
   );
 
+  const sortedJudges = useMemo(() => [...judges].sort((a, b) => a.name.localeCompare(b.name)), [judges]);
+  const filteredJudges = useMemo(() => {
+    const query = norm(assignmentJudgeSearch);
+    if (!query) return sortedJudges;
+    return sortedJudges.filter((judge) => norm(judge.name).includes(query) || norm(judge.email).includes(query));
+  }, [sortedJudges, assignmentJudgeSearch]);
+
+  const judgesById = useMemo(() => {
+    const map = new Map<number, Judge>();
+    judges.forEach((judge) => {
+      map.set(judge.id, judge);
+    });
+    return map;
+  }, [judges]);
+
   const displayRounds = useMemo(() => {
-    const rounds = [...ROUNDS];
+    const rounds = [...CONFIGURED_ROUNDS];
     const existingIds = new Set(rounds.map((round) => round.id));
 
     Object.keys(draftAssignments).forEach((roundId) => {
       if (!existingIds.has(roundId)) {
-        rounds.push({ id: roundId, name: roundId });
+        rounds.push({ id: roundId, name: labelForRoundId(roundId) });
       }
     });
 
     return rounds;
   }, [draftAssignments]);
+
+  const currentAssignments = useMemo(() => {
+    const items: Array<{ roundId: string; roundLabel: string; judgeId: number; judgeName: string; judgeEmail: string }> =
+      [];
+
+    Object.entries(draftAssignments).forEach(([roundId, judgeIds]) => {
+      judgeIds.forEach((judgeId) => {
+        const judge = judgesById.get(judgeId);
+        items.push({
+          roundId,
+          roundLabel: labelForRoundId(roundId),
+          judgeId,
+          judgeName: judge?.name ?? `Judge ${judgeId}`,
+          judgeEmail: judge?.email ?? "Unknown email",
+        });
+      });
+    });
+
+    return items.sort((a, b) => {
+      if (a.roundId !== b.roundId) return a.roundId.localeCompare(b.roundId);
+      return a.judgeName.localeCompare(b.judgeName);
+    });
+  }, [draftAssignments, judgesById]);
 
   async function loadData() {
     setLoading(true);
@@ -171,6 +197,9 @@ export default function TeamsAdminPage() {
     setDraftProjectName(team.project.name);
     setDraftProjectDetails(team.project.details);
     setDraftAssignments(team.assignments ?? {});
+    setAssignmentRound(CONFIGURED_ROUNDS[0].id);
+    setAssignmentJudgeId("");
+    setAssignmentJudgeSearch("");
     setSelectedMemberIds((team.users ?? []).map((member) => member.id));
   }
 
@@ -182,8 +211,9 @@ export default function TeamsAdminPage() {
     setDraftProjectName("");
     setDraftProjectDetails("");
     setDraftAssignments({});
-    setAssignmentRound(ROUNDS[0].id);
-    setAssignmentJudgeText("");
+    setAssignmentRound(CONFIGURED_ROUNDS[0].id);
+    setAssignmentJudgeId("");
+    setAssignmentJudgeSearch("");
     setSelectedMemberIds([]);
     setMemberSearch("");
   }
@@ -285,60 +315,89 @@ export default function TeamsAdminPage() {
     void updateMembers(selectedMemberIds.filter((id) => id !== userId));
   }
 
-  function toggleJudge(roundId: string, judgeId: number) {
-    setDraftAssignments((current) => {
-      const selected = current[roundId] ?? [];
-      const next = selected.includes(judgeId) ? selected.filter((id) => id !== judgeId) : [...selected, judgeId];
-      return { ...current, [roundId]: next };
-    });
-  }
-
-  function addJudgeToRound() {
-    const query = norm(assignmentJudgeText);
-    if (!query) {
-      setError("Please enter a judge name.");
-      return;
-    }
-
-    const judge = judges.find((item) => norm(item.name) === query || norm(item.email) === query);
-
-    if (!judge) {
-      setError("Judge not found. Use the judge name or email.");
-      return;
-    }
-
-    setError(null);
-    setDraftAssignments((current) => {
-      const selected = current[assignmentRound] ?? [];
-      if (selected.includes(judge.id)) {
-        return current;
-      }
-
-      return {
-        ...current,
-        [assignmentRound]: [...selected, judge.id],
-      };
-    });
-    setAssignmentJudgeText("");
-  }
-
-  async function saveAssignments() {
+  async function persistAssignments(
+    nextAssignments: Record<string, number[]>,
+    failureMessage: string,
+  ) {
     if (!activeTeam) return;
 
     setSavingAssignments(true);
     setError(null);
     try {
       const updated = await api.patch<Team>(`/admin/teams/${activeTeam.id}`, {
-        judgeAssignments: draftAssignments,
+        judgeAssignments: nextAssignments,
       });
       applyUpdatedTeam(updated);
     } catch (err) {
       console.error(err);
-      setError("Could not save judge assignments.");
+      setError(failureMessage);
     } finally {
       setSavingAssignments(false);
     }
   }
+
+  async function addJudgeToRound() {
+    const judgeId = Number(assignmentJudgeId);
+    if (!judgeId) {
+      setError("Please select a judge.");
+      return;
+    }
+
+    const selected = draftAssignments[assignmentRound] ?? [];
+    if (selected.includes(judgeId)) {
+      setError("This judge is already assigned to that round.");
+      return;
+    }
+
+    const nextAssignments = {
+      ...draftAssignments,
+      [assignmentRound]: [...selected, judgeId],
+    };
+
+    await persistAssignments(nextAssignments, "Could not add judge assignment.");
+  }
+
+  async function removeJudgeFromRound(roundId: string, judgeId: number) {
+    const selected = draftAssignments[roundId] ?? [];
+    if (!selected.includes(judgeId)) {
+      return;
+    }
+
+    const nextSelected = selected.filter((id) => id !== judgeId);
+    const nextAssignments = { ...draftAssignments };
+    if (nextSelected.length === 0) {
+      delete nextAssignments[roundId];
+    } else {
+      nextAssignments[roundId] = nextSelected;
+    }
+
+    await persistAssignments(nextAssignments, "Could not remove judge assignment.");
+  }
+
+  function onAssignmentRoundChange(roundId: string) {
+    setAssignmentRound(roundId);
+  }
+
+  useEffect(() => {
+    const hasSelectedRound = displayRounds.some((round) => round.id === assignmentRound);
+    if (!hasSelectedRound && displayRounds.length > 0) {
+      setAssignmentRound(displayRounds[0].id);
+    }
+  }, [assignmentRound, displayRounds]);
+
+  useEffect(() => {
+    if (filteredJudges.length === 0) {
+      if (assignmentJudgeId !== "") {
+        setAssignmentJudgeId("");
+      }
+      return;
+    }
+
+    const hasSelectedJudge = filteredJudges.some((judge) => String(judge.id) === assignmentJudgeId);
+    if (!hasSelectedJudge) {
+      setAssignmentJudgeId(String(filteredJudges[0].id));
+    }
+  }, [assignmentJudgeId, filteredJudges]);
 
   return (
     <div className={`${styles.card} text-(--sub-text)`}>
@@ -387,7 +446,7 @@ export default function TeamsAdminPage() {
       )}
 
       <div className={`${styles.card} mt-4`}>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto h-100">
           <table className="w-full text-sm">
             <thead className="opacity-70">
               <tr className="border-b border-white/10">
@@ -639,11 +698,11 @@ export default function TeamsAdminPage() {
             </div>
 
             <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
-              <div className="mb-2 text-sm font-semibold text-(--sub-text)">Judge Assignments</div>
-              <div className="mb-3 grid grid-cols-1 gap-2 md:grid-cols-3">
+              <div className="mb-2 text-sm font-semibold text-(--sub-text)">Add Assignment</div>
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
                 <select
                   value={assignmentRound}
-                  onChange={(event) => setAssignmentRound(event.target.value)}
+                  onChange={(event) => onAssignmentRoundChange(event.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none">
                   {displayRounds.map((round) => (
                     <option key={round.id} value={round.id}>
@@ -652,63 +711,61 @@ export default function TeamsAdminPage() {
                   ))}
                 </select>
                 <input
-                  value={assignmentJudgeText}
-                  onChange={(event) => setAssignmentJudgeText(event.target.value)}
+                  value={assignmentJudgeSearch}
+                  onChange={(event) => setAssignmentJudgeSearch(event.target.value)}
                   className="w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none"
-                  placeholder="Type judge name or email..."
+                  placeholder="Search judges..."
                 />
-                <button onClick={addJudgeToRound} className={`${styles.primaryButton} text-xs whitespace-nowrap`}>
-                  Add Judge To Round
-                </button>
-              </div>
-              <div className="space-y-2">
-                {displayRounds.map((round) => {
-                  const selected = draftAssignments[round.id] ?? [];
-                  return (
-                    <details key={round.id} className="rounded-xl border border-white/10 bg-white/5">
-                      <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm font-semibold hover:bg-white/10">
-                        <span>{round.name}</span>
-                        <span className="text-xs font-normal text-(--sub-text)">
-                          {selected.length === 0
-                            ? "No judge"
-                            : selected.length === 1
-                              ? "1 judge"
-                              : `${selected.length} judges`}
-                        </span>
-                      </summary>
-                      <div className="border-t border-white/10 px-3 py-2">
-                        <div className="max-h-40 space-y-1 overflow-y-auto pr-1">
-                          {judges.map((judge) => (
-                            <label
-                              key={judge.id}
-                              className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-1 text-xs hover:bg-white/10">
-                              <input
-                                type="checkbox"
-                                checked={selected.includes(judge.id)}
-                                onChange={() => toggleJudge(round.id, judge.id)}
-                                className="mt-0.5"
-                              />
-                              <span className="truncate font-medium">
-                                {judge.name}
-                                <span className="ml-1 font-normal text-(--sub-text)">({judge.email})</span>
-                              </span>
-                            </label>
-                          ))}
-                        </div>
-                      </div>
-                    </details>
-                  );
-                })}
-              </div>
-
-              <div className="mt-3 flex justify-end">
                 <button
-                  onClick={() => void saveAssignments()}
-                  disabled={savingAssignments}
-                  className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}>
-                  {savingAssignments ? "Saving..." : "Save Assignments"}
+                  onClick={() => void addJudgeToRound()}
+                  disabled={savingAssignments || filteredJudges.length === 0}
+                  className={`${styles.primaryButton} text-xs whitespace-nowrap disabled:cursor-not-allowed disabled:opacity-60`}>
+                  {savingAssignments ? "Saving..." : "Add Judge To Round"}
                 </button>
               </div>
+              <div className="mt-2">
+                <select
+                  value={assignmentJudgeId}
+                  onChange={(event) => setAssignmentJudgeId(event.target.value)}
+                  size={Math.min(12, Math.max(6, filteredJudges.length || 6))}
+                  className="h-52 w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none">
+                  {filteredJudges.map((judge) => (
+                    <option key={judge.id} value={judge.id}>
+                      {judge.name} ({judge.email})
+                    </option>
+                  ))}
+                </select>
+                <div className="mt-1 text-xs text-(--sub-text)">
+                  Showing {filteredJudges.length} judge{filteredJudges.length === 1 ? "" : "s"}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-white/10 bg-black/10 p-4">
+              <div className="mb-2 text-sm font-semibold text-(--sub-text)">Current Assignments</div>
+              {currentAssignments.length === 0 ? (
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-(--sub-text)">
+                  No assignments yet.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {currentAssignments.map((item) => (
+                    <div
+                      key={`${item.roundId}-${item.judgeId}`}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
+                      <span>
+                        {item.roundLabel} - {item.judgeName} ({item.judgeEmail})
+                      </span>
+                      <button
+                        onClick={() => void removeJudgeFromRound(item.roundId, item.judgeId)}
+                        disabled={savingAssignments}
+                        className={`${styles.warnButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}>
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

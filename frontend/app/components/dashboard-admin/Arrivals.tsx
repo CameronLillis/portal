@@ -89,7 +89,6 @@ export default function Arrivals() {
               <tr className="border-b">
                 <th className="py-3 text-left font-medium">User</th>
                 <th className="py-3 text-left font-medium">Team</th>
-                <th className="py-3 text-left font-medium">Track</th>
                 <th className="py-3 text-left font-medium">State</th>
                 <th className="py-3 text-right font-medium">Actions</th>
               </tr>
@@ -109,7 +108,6 @@ export default function Arrivals() {
                       <div className="text-xs opacity-60">{u.email}</div>
                     </td>
                     <td className="py-3">{u.team}</td>
-                    <td className="py-3">{u.track}</td>
                     <td className="py-3">
                       <span
                         className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${pill}`}>
@@ -134,7 +132,7 @@ export default function Arrivals() {
 
               {filteredUser.length === 0 && (
                 <tr>
-                  <td className="py-6 text-center opacity-70 text-(--sub-text)" colSpan={5}>
+                  <td className="py-6 text-center opacity-70 text-(--sub-text)" colSpan={4}>
                     No matching users.
                   </td>
                 </tr>

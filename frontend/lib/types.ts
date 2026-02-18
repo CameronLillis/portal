@@ -92,3 +92,8 @@ export interface Invitation {
     email: string;
   };
 }
+
+export type RoundOption = {
+  id: string;
+  name: string;
+};

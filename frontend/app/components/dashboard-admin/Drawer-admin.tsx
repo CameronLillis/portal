@@ -1,6 +1,6 @@
 import style from "../../dashboard/dashboard.module.css";
 
-const TABS = ["Arrivals", "Teams", "Judges"];
+const TABS = ["Arrivals", "Teams"];
 
 export function Drawer({
   isDrawerOpen,
