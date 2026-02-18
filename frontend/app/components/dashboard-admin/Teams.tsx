@@ -67,10 +67,7 @@ export default function TeamsAdminPage() {
   const [selectedMemberIds, setSelectedMemberIds] = useState<number[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
 
-  const activeTeam = useMemo(
-    () => teams.find((team) => team.id === activeTeamId) ?? null,
-    [teams, activeTeamId],
-  );
+  const activeTeam = useMemo(() => teams.find((team) => team.id === activeTeamId) ?? null, [teams, activeTeamId]);
 
   const filteredTeams = useMemo(() => {
     const query = norm(search);
@@ -80,8 +77,7 @@ export default function TeamsAdminPage() {
         if (!query) return true;
         const inTeam = norm(team.teamName).includes(query);
         const inTrack = norm(team.track).includes(query);
-        const inProject =
-          norm(team.project.name).includes(query) || norm(team.project.details).includes(query);
+        const inProject = norm(team.project.name).includes(query) || norm(team.project.details).includes(query);
         const inMembers = (team.members ?? []).some(
           (member) => norm(member.name).includes(query) || norm(member.email).includes(query),
         );
@@ -109,11 +105,7 @@ export default function TeamsAdminPage() {
 
     return availableUsers.filter((user) => {
       const currentTeam = memberTeamByUserId.get(user.id) ?? "Unassigned";
-      return (
-        norm(user.name).includes(query) ||
-        norm(user.email).includes(query) ||
-        norm(currentTeam).includes(query)
-      );
+      return norm(user.name).includes(query) || norm(user.email).includes(query) || norm(currentTeam).includes(query);
     });
   }, [availableUsers, memberSearch, memberTeamByUserId]);
 
@@ -296,9 +288,7 @@ export default function TeamsAdminPage() {
   function toggleJudge(roundId: string, judgeId: number) {
     setDraftAssignments((current) => {
       const selected = current[roundId] ?? [];
-      const next = selected.includes(judgeId)
-        ? selected.filter((id) => id !== judgeId)
-        : [...selected, judgeId];
+      const next = selected.includes(judgeId) ? selected.filter((id) => id !== judgeId) : [...selected, judgeId];
       return { ...current, [roundId]: next };
     });
   }
@@ -354,9 +344,7 @@ export default function TeamsAdminPage() {
     <div className={`${styles.card} text-(--sub-text)`}>
       <div className="mb-4">
         <h2 className={styles.primaryTitle}>Teams</h2>
-        <p className="mt-1 text-sm text-(--sub-text)">
-          Edit team info, projects, members, and judge assignments.
-        </p>
+        <p className="mt-1 text-sm text-(--sub-text)">Edit team info, projects, members, and judge assignments.</p>
       </div>
 
       <div className={styles.card}>
@@ -433,9 +421,7 @@ export default function TeamsAdminPage() {
                     <td className="py-3">{team.project.name || "—"}</td>
                     <td className="py-3">{(team.members ?? []).length}</td>
                     <td className="py-3 text-right">
-                      <button
-                        onClick={() => openEditor(team)}
-                        className={`${styles.primaryButton} text-xs`}>
+                      <button onClick={() => openEditor(team)} className={`${styles.primaryButton} text-xs`}>
                         Edit
                       </button>
                     </td>
@@ -463,9 +449,7 @@ export default function TeamsAdminPage() {
       </div>
 
       {activeTeam && (
-        <div
-          className={`${styles.modalBackdrop} fixed inset-0 z-50 bg-black/50`}
-          onMouseDown={closeEditor}>
+        <div className={`${styles.modalBackdrop} fixed inset-0 z-50 bg-black/50`} onMouseDown={closeEditor}>
           <div
             className={`${styles.cardModal} max-h-[90vh] w-[min(620px,95vw)] overflow-y-auto shadow-xl`}
             onMouseDown={(event) => event.stopPropagation()}>
@@ -491,9 +475,7 @@ export default function TeamsAdminPage() {
                 placeholder="Team name"
                 maxLength={TEAM_NAME_MAX_LENGTH}
               />
-              <div className="mt-1 text-xs text-(--sub-text)">
-                Max {TEAM_NAME_MAX_LENGTH} characters
-              </div>
+              <div className="mt-1 text-xs text-(--sub-text)">Max {TEAM_NAME_MAX_LENGTH} characters</div>
               <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div>
                   <label className="text-xs text-(--sub-text)">Track</label>
@@ -544,9 +526,7 @@ export default function TeamsAdminPage() {
                 placeholder="Project description"
                 maxLength={PROJECT_DETAILS_MAX_LENGTH}
               />
-              <div className="mt-1 text-xs text-(--sub-text)">
-                Max {PROJECT_DETAILS_MAX_LENGTH} characters
-              </div>
+              <div className="mt-1 text-xs text-(--sub-text)">Max {PROJECT_DETAILS_MAX_LENGTH} characters</div>
               <div className="mt-3 flex justify-end">
                 <button
                   onClick={() => void saveProjectInfo()}
@@ -585,8 +565,7 @@ export default function TeamsAdminPage() {
                   <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
                     {filteredNonTeamUsers.map((user) => {
                       const currentTeam = memberTeamByUserId.get(user.id);
-                      const canAdd =
-                        !currentTeam || (activeTeam != null && currentTeam === activeTeam.teamName);
+                      const canAdd = !currentTeam || (activeTeam != null && currentTeam === activeTeam.teamName);
 
                       return (
                         <div
@@ -601,11 +580,7 @@ export default function TeamsAdminPage() {
                           <button
                             type="button"
                             onClick={() => onAddMember(user.id)}
-                            disabled={
-                              savingMembers ||
-                              selectedMemberIds.length >= TEAM_MEMBER_LIMIT ||
-                              !canAdd
-                            }
+                            disabled={savingMembers || selectedMemberIds.length >= TEAM_MEMBER_LIMIT || !canAdd}
                             className={`${styles.primaryButton} text-xs disabled:cursor-not-allowed disabled:opacity-60`}>
                             {canAdd ? "Add" : "On Another Team"}
                           </button>
@@ -682,9 +657,7 @@ export default function TeamsAdminPage() {
                   className="w-full rounded-xl border border-white/10 bg-[#111435] px-3 py-2 text-sm text-(--sub-text) outline-none"
                   placeholder="Type judge name or email..."
                 />
-                <button
-                  onClick={addJudgeToRound}
-                  className={`${styles.primaryButton} text-xs whitespace-nowrap`}>
+                <button onClick={addJudgeToRound} className={`${styles.primaryButton} text-xs whitespace-nowrap`}>
                   Add Judge To Round
                 </button>
               </div>
@@ -692,9 +665,7 @@ export default function TeamsAdminPage() {
                 {displayRounds.map((round) => {
                   const selected = draftAssignments[round.id] ?? [];
                   return (
-                    <details
-                      key={round.id}
-                      className="rounded-xl border border-white/10 bg-white/5">
+                    <details key={round.id} className="rounded-xl border border-white/10 bg-white/5">
                       <summary className="flex cursor-pointer items-center justify-between px-3 py-2 text-sm font-semibold hover:bg-white/10">
                         <span>{round.name}</span>
                         <span className="text-xs font-normal text-(--sub-text)">
@@ -719,9 +690,7 @@ export default function TeamsAdminPage() {
                               />
                               <span className="truncate font-medium">
                                 {judge.name}
-                                <span className="ml-1 font-normal text-(--sub-text)">
-                                  ({judge.email})
-                                </span>
+                                <span className="ml-1 font-normal text-(--sub-text)">({judge.email})</span>
                               </span>
                             </label>
                           ))}

@@ -79,13 +79,8 @@ export default function JudgesAdminPage() {
 
       <div className={styles.card}>
         <div className="mb-3 flex items-center justify-between">
-          <p className="text-sm text-white/70">
-            Judge assignments by round and team.
-          </p>
-          <button
-            onClick={() => void loadData()}
-            className={`${styles.secondaryButton} text-xs`}
-          >
+          <p className="text-sm text-white/70">Judge assignments by round and team.</p>
+          <button onClick={() => void loadData()} className={`${styles.secondaryButton} text-xs`}>
             Refresh
           </button>
         </div>
@@ -117,8 +112,7 @@ export default function JudgesAdminPage() {
                             {items.map((item) => (
                               <span
                                 key={`${judge.id}-${item}`}
-                                className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs"
-                              >
+                                className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs">
                                 {item}
                               </span>
                             ))}

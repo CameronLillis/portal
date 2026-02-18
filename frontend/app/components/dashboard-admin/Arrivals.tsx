@@ -12,15 +12,10 @@ export default function Arrivals() {
 
   // Update the state when searching and filtering
   const [arrivalSearch, setArrivalSearch] = useState("");
-  const [arrivalFilter, setArrivalFilter] = useState<"All" | ArrivalState>(
-    "All",
-  );
+  const [arrivalFilter, setArrivalFilter] = useState<"All" | ArrivalState>("All");
 
   // Handle arrival state change
-  const handleSetArrivalState = async (
-    userId: number,
-    newState: ArrivalState,
-  ) => {
+  const handleSetArrivalState = async (userId: number, newState: ArrivalState) => {
     try {
       await api.patch(`/admin/users/${userId}`, { state: newState });
       await refetch();
@@ -44,9 +39,7 @@ export default function Arrivals() {
       .filter((u) => {
         if (!q) return true;
         return (
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          u.team.toLowerCase().includes(q)
+          u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.team.toLowerCase().includes(q)
         );
       })
       .filter((u) => {
@@ -69,11 +62,8 @@ export default function Arrivals() {
 
           <select
             value={arrivalFilter}
-            onChange={(e) =>
-              setArrivalFilter(e.target.value as "All" | ArrivalState)
-            }
-            className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm text-(--sub-text)"
-          >
+            onChange={(e) => setArrivalFilter(e.target.value as "All" | ArrivalState)}
+            className="rounded-xl bg-[#111435] border border-[#FEA70A] px-3 py-2 text-sm text-(--sub-text)">
             <option value="All">All</option>
             <option value="Pending">Pending</option>
             <option value="Checked In">Checked In</option>
@@ -122,8 +112,7 @@ export default function Arrivals() {
                     <td className="py-3">{u.track}</td>
                     <td className="py-3">
                       <span
-                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${pill}`}
-                      >
+                        className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${pill}`}>
                         {u.state}
                       </span>
                     </td>
@@ -132,14 +121,8 @@ export default function Arrivals() {
                       <div className="flex justify-end gap-2">
                         <select
                           value={u.state}
-                          onChange={(e) =>
-                            handleSetArrivalState(
-                              u.id,
-                              e.target.value as ArrivalState,
-                            )
-                          }
-                          className="rounded-lg bg-[#111435] border border-[#FEA70A] px-2 py-1 text-xs disabled:opacity-60 text-(--sub-text)"
-                        >
+                          onChange={(e) => handleSetArrivalState(u.id, e.target.value as ArrivalState)}
+                          className="rounded-lg bg-[#111435] border border-[#FEA70A] px-2 py-1 text-xs disabled:opacity-60 text-(--sub-text)">
                           <option value="Pending">Pending</option>
                           <option value="Checked In">Checked In</option>
                         </select>
